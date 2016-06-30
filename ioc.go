@@ -3,6 +3,7 @@ package ioc
 import (
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/codegangsta/inject"
 )
@@ -43,16 +44,20 @@ type Container interface {
 
 // NewContainer : create iocContainer
 func NewContainer() Container {
-	return &iocContainer{i: inject.New(), typemapper: make(map[reflect.Type]reflect.Type)}
+	return &iocContainer{locker: &sync.RWMutex{}, i: inject.New(), typemapper: make(map[reflect.Type]reflect.Type)}
 }
 
 type iocContainer struct {
+	locker     *sync.RWMutex
 	i          inject.Injector
 	typemapper map[reflect.Type]reflect.Type
 	parent     Container
 }
 
 func (container *iocContainer) Register(val interface{}, lifecycle Lifecycle) {
+	defer container.locker.Unlock()
+	container.locker.Lock()
+
 	if container.i.Get(reflect.TypeOf(val)).IsValid() {
 		lifecycle = Singleton
 	} else if container.typemapper[reflect.TypeOf(val)] != nil {
@@ -60,9 +65,6 @@ func (container *iocContainer) Register(val interface{}, lifecycle Lifecycle) {
 	}
 	switch lifecycle {
 	case Singleton:
-		if initializer, ok := val.(Initializer); ok {
-			container.Invoke(initializer.InitFunc())
-		}
 		container.i.Map(val)
 	case Transient:
 		typ := reflect.TypeOf(val)
@@ -71,6 +73,9 @@ func (container *iocContainer) Register(val interface{}, lifecycle Lifecycle) {
 }
 
 func (container *iocContainer) RegisterTo(val interface{}, ifacePtr interface{}, lifecycle Lifecycle) {
+	defer container.locker.Unlock()
+	container.locker.Lock()
+
 	if container.i.Get(reflect.TypeOf(val)).IsValid() {
 		lifecycle = Singleton
 	} else if container.typemapper[reflect.TypeOf(val)] != nil {
@@ -78,9 +83,6 @@ func (container *iocContainer) RegisterTo(val interface{}, ifacePtr interface{},
 	}
 	switch lifecycle {
 	case Singleton:
-		if initializer, ok := val.(Initializer); ok {
-			container.Invoke(initializer.InitFunc())
-		}
 		container.i.MapTo(val, ifacePtr)
 	case Transient:
 		typ := fromPtrTypeOf(ifacePtr)
@@ -89,12 +91,20 @@ func (container *iocContainer) RegisterTo(val interface{}, ifacePtr interface{},
 }
 
 func (container *iocContainer) Resolve(typ reflect.Type) reflect.Value {
+	defer container.locker.RUnlock()
+	container.locker.RLock()
+
 	if val := container.i.Get(typ); val.IsValid() {
+		if initializer, ok := val.Interface().(Initializer); ok {
+			container.Invoke(initializer.InitFunc())
+		}
 		return val
 	} else if realTyp := container.typemapper[typ]; realTyp != nil {
 		val := reflect.New(realTyp)
-		obj := val.Interface()
-		if initializer, ok := obj.(Initializer); ok {
+		if typ.Kind() != reflect.Ptr && typ.Kind() != reflect.Interface {
+			val = val.Elem()
+		}
+		if initializer, ok := val.Interface().(Initializer); ok {
 			container.Invoke(initializer.InitFunc())
 		}
 		return val
@@ -104,7 +114,6 @@ func (container *iocContainer) Resolve(typ reflect.Type) reflect.Value {
 	return reflect.Value{}
 }
 
-// 调用函数，通过调用初始化的函数完成注入操作
 func (container *iocContainer) Invoke(f interface{}) ([]reflect.Value, error) {
 	t := reflect.TypeOf(f)
 	var in = make([]reflect.Value, t.NumIn()) //Panic if t is not kind of Func
@@ -124,7 +133,6 @@ func (container *iocContainer) SetParent(parent Container) {
 	container.parent = parent
 }
 
-// 获取真实类型，而非指针
 func fromPtrTypeOf(obj interface{}) reflect.Type {
 	realType := reflect.TypeOf(obj)
 	for realType.Kind() == reflect.Ptr {
@@ -133,7 +141,6 @@ func fromPtrTypeOf(obj interface{}) reflect.Type {
 	return realType
 }
 
-// 获取真实类型，而非指针
 func fromPtrType(typ reflect.Type) reflect.Type {
 	realType := typ
 	for realType.Kind() == reflect.Ptr {
