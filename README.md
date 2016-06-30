@@ -3,6 +3,12 @@ Inversion of Control (IoC)
 
 You can register a type as singleton or transient. Also you can register a type mapping to an interface as singleton or transient.
 
+
+## Usage
+
+    go get github.com/berkaroad/ioc
+
+
 ## Example
 
     package main
@@ -70,5 +76,3 @@ You can register a type as singleton or transient. Also you can register a type 
             println("i2.GetName=()", i2.GetName())
         })
     }
-
-
