@@ -6,7 +6,6 @@ import (
 
 type transientContainer struct {
 	typemapper map[reflect.Type]reflect.Type
-	parent     Container
 }
 
 func (container *transientContainer) Map(val interface{}) {
