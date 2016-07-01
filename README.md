@@ -32,7 +32,8 @@ You can register a type as singleton or transient. Also you can register a type 
 
     func (c *Class1) InitFunc() interface{} {
         return func(c2 *Class2) {
-            if !isInitialized {
+            if !c.isInitialized {
+                c.isInitialized = true
                 c.C2Name = c2.Name
             }
         }
@@ -49,7 +50,8 @@ You can register a type as singleton or transient. Also you can register a type 
 
     func (c *Class2) InitFunc() interface{} {
         return func() {
-            if !isInitialized {
+            if !c.isInitialized {
+                c.isInitialized = true
                 c.Name = "Tomcat"
             }
         }
