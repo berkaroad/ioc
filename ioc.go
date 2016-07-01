@@ -118,7 +118,7 @@ func (container *iocContainer) Resolve(typ reflect.Type) reflect.Value {
 		}
 		endTime := time.Now().UnixNano()
 		if DEBUG {
-			consoleLog.Printf("Container.Resolve transient '%v' execute in %vns.\n", typ, float64(endTime-startTime)/float64(time.Nanosecond))
+			consoleLog.Printf("Container.Resolve transient '%v' execute in %vms.\n", typ, float64(endTime-startTime)/float64(time.Millisecond))
 		}
 	} else if val = container.singleton.Get(typ); val.IsValid() {
 		if initializer, ok := val.Interface().(Initializer); ok {
@@ -126,7 +126,7 @@ func (container *iocContainer) Resolve(typ reflect.Type) reflect.Value {
 		}
 		endTime := time.Now().UnixNano()
 		if DEBUG {
-			consoleLog.Printf("Container.Resolve singleton '%v' execute in %vns.\n", typ, float64(endTime-startTime)/float64(time.Nanosecond))
+			consoleLog.Printf("Container.Resolve singleton '%v' execute in %vms.\n", typ, float64(endTime-startTime)/float64(time.Millisecond))
 		}
 	} else if container.parent != nil {
 		val = container.parent.Resolve(typ)
