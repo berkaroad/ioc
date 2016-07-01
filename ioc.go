@@ -143,7 +143,6 @@ func (container *iocContainer) Invoke(f interface{}) ([]reflect.Value, error) {
 		if !val.IsValid() {
 			return nil, fmt.Errorf("Value not found for type %v", argType)
 		}
-
 		in[i] = val
 	}
 	return reflect.ValueOf(f).Call(in), nil
@@ -171,14 +170,11 @@ func FromPtrType(typ reflect.Type) reflect.Type {
 
 func InterfaceOf(value interface{}) reflect.Type {
 	t := reflect.TypeOf(value)
-
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
-
 	if t.Kind() != reflect.Interface {
 		consoleLog.Panic("Called InterfaceOf with a value that is not a pointer to an interface. (*MyInterface)(nil)")
 	}
-
 	return t
 }
