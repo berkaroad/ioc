@@ -26,12 +26,15 @@ You can register a type as singleton or transient. Also you can register a type 
     }
 
     type Class1 struct {
-        C2Name string
+        C2Name          string
+        isInitialized   bool
     }
 
     func (c *Class1) InitFunc() interface{} {
         return func(c2 *Class2) {
-            c.C2Name = c2.Name
+            if !isInitialized {
+                c.C2Name = c2.Name
+            }
         }
     }
 
@@ -40,12 +43,15 @@ You can register a type as singleton or transient. Also you can register a type 
     }
 
     type Class2 struct {
-        Name string
+        Name            string
+        isInitialized   bool
     }
 
     func (c *Class2) InitFunc() interface{} {
         return func() {
-            c.Name = "Tomcat"
+            if !isInitialized {
+                c.Name = "Tomcat"
+            }
         }
     }
 
