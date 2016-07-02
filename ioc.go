@@ -154,6 +154,7 @@ func (container *iocContainer) SetParent(parent Container) {
 	container.parent = parent
 }
 
+// FromPtrTypeOf is to get real type from a pointer to value
 func FromPtrTypeOf(obj interface{}) reflect.Type {
 	realType := reflect.TypeOf(obj)
 	for realType.Kind() == reflect.Ptr {
@@ -162,6 +163,7 @@ func FromPtrTypeOf(obj interface{}) reflect.Type {
 	return realType
 }
 
+// FromPtrType is to get real type from a pointer to type
 func FromPtrType(typ reflect.Type) reflect.Type {
 	realType := typ
 	for realType.Kind() == reflect.Ptr {
@@ -170,8 +172,9 @@ func FromPtrType(typ reflect.Type) reflect.Type {
 	return realType
 }
 
-func InterfaceOf(value interface{}) reflect.Type {
-	t := reflect.TypeOf(value)
+// InterfaceOf is to get interface from a pointer to value
+func InterfaceOf(ifacePtr interface{}) reflect.Type {
+	t := reflect.TypeOf(ifacePtr)
 	for t.Kind() == reflect.Ptr {
 		t = t.Elem()
 	}
