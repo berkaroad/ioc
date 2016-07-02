@@ -10,7 +10,9 @@ import (
 )
 
 var consoleLog = log.New(os.Stdout, "[ioc] ", log.LstdFlags)
-var DEBUG bool = false
+
+// DEBUG is a switcher for debug
+var DEBUG = false
 
 // Lifecycle is singleton or transient
 type Lifecycle int
