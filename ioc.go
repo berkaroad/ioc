@@ -1,3 +1,7 @@
+/*
+Package ioc is Inversion of Control (IoC).
+Support lifecycle, such as singleton and transient.
+*/
 package ioc
 
 import (
@@ -20,7 +24,6 @@ type Lifecycle int
 const (
 	// Singleton is single instance
 	Singleton Lifecycle = 0
-
 	// Transient is temporary instance
 	Transient Lifecycle = 1
 )
@@ -34,16 +37,12 @@ type Initializer interface {
 type Container interface {
 	// Register is to register a type as singleton or transient.
 	Register(val interface{}, lifecycle Lifecycle)
-
 	// RegisterTo is to register a interface as singleton or transient.
 	RegisterTo(val interface{}, ifacePtr interface{}, lifecycle Lifecycle)
-
 	// Resolve is to get instance of type.
 	Resolve(typ reflect.Type) reflect.Value
-
 	// Invoke is to inject to function's params, such as construction.
 	Invoke(f interface{}) ([]reflect.Value, error)
-
 	// SetParent is to resolve parent's container if current hasn't registered a type.
 	SetParent(parent Container)
 }
