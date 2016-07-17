@@ -1,3 +1,7 @@
+/*
+Package ioc is Inversion of Control (IoC).
+Support lifecycle, such as singleton and transient.
+*/
 package ioc
 
 import (
