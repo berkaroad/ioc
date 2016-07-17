@@ -49,7 +49,7 @@ Also you can register a type mapping to an interface as singleton or transient.
         }
     }
 
-### Scenario 1: 1 routine, 3 times resolve singleton and 1 times resolve transient per code invoke.
+### Scenario 1: 1 routine, 3 times resolve singleton and 1 times resolve transient per code invoke, invoke 1,000,000 times.
 
 Result:
 
@@ -57,7 +57,7 @@ Result:
     [commandprocessor] 2016/07/17 11:31:34 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 4951.494214ms.
     [commandprocessor] 2016/07/17 11:31:39 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 4954.376794ms.
     
-### Scenario 2: 2 routine, 3 times resolve singleton and 1 times resolve transient per code invoke.
+### Scenario 2: 2 routine, 3 times resolve singleton and 1 times resolve transient per code invoke, invoke 1,000,000 times.
 
     [commandprocessor] 2016/07/17 11:23:50 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2779.720723ms.
     [commandprocessor] 2016/07/17 11:23:53 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2719.810844ms.
