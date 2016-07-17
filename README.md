@@ -11,7 +11,7 @@ Also you can register a type mapping to an interface as singleton or transient.
 
 ## Performance
 
-2 routine, 4 resolve action, 400,000 / sec
+2 routine, 4 resolve action, 350,000 / sec
 
 ### Test code
 
