@@ -33,30 +33,51 @@ type Initializer interface {
 	InitFunc() interface{}
 }
 
-// Container is a container for ioc.
-type Container interface {
-	// Register is to register a type as singleton or transient.
-	Register(val interface{}, lifecycle Lifecycle)
-	// RegisterTo is to register a interface as singleton or transient.
-	RegisterTo(val interface{}, ifacePtr interface{}, lifecycle Lifecycle)
+// ReadonlyContainer is a readonly container
+type ReadonlyContainer interface {
 	// Resolve is to get instance of type.
 	Resolve(typ reflect.Type) reflect.Value
 	// Invoke is to inject to function's params, such as construction.
 	Invoke(f interface{}) ([]reflect.Value, error)
+}
+
+// Container is a container for ioc.
+type Container interface {
+	Initializer
+	ReadonlyContainer
+	// Register is to register a type as singleton or transient.
+	Register(val interface{}, lifecycle Lifecycle)
+	// RegisterTo is to register a interface as singleton or transient.
+	RegisterTo(val interface{}, ifacePtr interface{}, lifecycle Lifecycle)
 	// SetParent is to resolve parent's container if current hasn't registered a type.
-	SetParent(parent Container)
+	SetParent(parent ReadonlyContainer)
 }
 
 // NewContainer : create iocContainer
 func NewContainer() Container {
-	return &iocContainer{locker: &sync.RWMutex{}, singleton: &singletonContainer{valuemapper: make(map[reflect.Type]reflect.Value)}, transient: &transientContainer{typemapper: make(map[reflect.Type]reflect.Type)}}
+	container := &iocContainer{}
+	reflect.ValueOf(container.InitFunc()).Call(nil)
+	container.RegisterTo(container, (*ReadonlyContainer)(nil), Singleton)
+	return container
 }
 
 type iocContainer struct {
-	locker    *sync.RWMutex
-	singleton *singletonContainer
-	transient *transientContainer
-	parent    Container
+	isInitialized bool
+	locker        *sync.RWMutex
+	singleton     *singletonContainer
+	transient     *transientContainer
+	parent        ReadonlyContainer
+}
+
+func (container *iocContainer) InitFunc() interface{} {
+	return func() {
+		if !container.isInitialized {
+			container.locker = &sync.RWMutex{}
+			container.singleton = &singletonContainer{valuemapper: make(map[reflect.Type]reflect.Value)}
+			container.transient = &transientContainer{typemapper: make(map[reflect.Type]reflect.Type)}
+			container.isInitialized = true
+		}
+	}
 }
 
 func (container *iocContainer) Register(val interface{}, lifecycle Lifecycle) {
@@ -149,7 +170,7 @@ func (container *iocContainer) Invoke(f interface{}) ([]reflect.Value, error) {
 	return reflect.ValueOf(f).Call(in), nil
 }
 
-func (container *iocContainer) SetParent(parent Container) {
+func (container *iocContainer) SetParent(parent ReadonlyContainer) {
 	container.parent = parent
 }
 
