@@ -10,9 +10,20 @@ Also you can register a type mapping to an interface as singleton or transient.
 
     go get github.com/berkaroad/ioc
 
+## Change List
+
+* 2016/8/31
+1. Remove readonly lock,
+2. Singleton instance's initialization called only once.
+3. Performance is 15% faster than last version.
+
+* 2016/7/18
+1. first version.
+
+
 ## Performance
 
-2 routine, 4 resolve action, 350,000 / sec
+2 routine, 4 resolve action, 470,000 / sec,  compile at go 1.7
 
 ### Test code
 
@@ -56,19 +67,33 @@ Also you can register a type mapping to an interface as singleton or transient.
 
 Result:
 
-    [commandprocessor] 2016/07/17 11:31:29 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 4971.1971ms.
-    [commandprocessor] 2016/07/17 11:31:34 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 4951.494214ms.
-    [commandprocessor] 2016/07/17 11:31:39 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 4954.376794ms.
-    
+    [commandprocessor] 2016/08/31 12:11:53 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 3856.813759ms.
+    [commandprocessor] 2016/08/31 12:11:57 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 3973.131994ms.
+    [commandprocessor] 2016/08/31 12:12:01 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 3873.912007ms.
+    [commandprocessor] 2016/08/31 12:12:06 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 3940.871694ms.
+    [commandprocessor] 2016/08/31 12:12:10 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 3893.92014ms.
+    [commandprocessor] 2016/08/31 12:12:15 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 4853.996326ms.
+    [commandprocessor] 2016/08/31 12:12:19 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 4009.755085ms.
+    [commandprocessor] 2016/08/31 12:12:24 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 4077.67913ms.
+    [commandprocessor] 2016/08/31 12:12:28 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 3926.909983ms.
+    [commandprocessor] 2016/08/31 12:12:32 [info] requestContext.Invoke for 1000000 times with 1 routines execute in 3899.237142ms.
+
 ### Scenario 2:
 
 2 routine, 3 times resolve singleton and 1 times resolve transient per code invoke, invoke 1,000,000 times.
 
 Result:
 
-    [commandprocessor] 2016/07/17 11:23:50 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2779.720723ms.
-    [commandprocessor] 2016/07/17 11:23:53 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2719.810844ms.
-    [commandprocessor] 2016/07/17 11:23:56 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2734.028326ms.
+    [commandprocessor] 2016/08/31 12:14:36 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2034.126408ms.
+    [commandprocessor] 2016/08/31 12:14:38 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2033.807996ms.
+    [commandprocessor] 2016/08/31 12:14:40 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2051.833847ms.
+    [commandprocessor] 2016/08/31 12:14:43 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2063.946131ms.
+    [commandprocessor] 2016/08/31 12:14:45 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2032.77146ms.
+    [commandprocessor] 2016/08/31 12:14:47 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2036.492861ms.
+    [commandprocessor] 2016/08/31 12:14:50 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2091.975376ms.
+    [commandprocessor] 2016/08/31 12:14:52 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2080.193925ms.
+    [commandprocessor] 2016/08/31 12:14:55 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2030.570388ms.
+    [commandprocessor] 2016/08/31 12:14:57 [info] requestContext.Invoke for 1000000 times with 2 routines execute in 2026.989203ms.
 
 ## Example
 
