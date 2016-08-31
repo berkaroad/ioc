@@ -9,7 +9,6 @@ import (
 	"log"
 	"os"
 	"reflect"
-	"sync"
 	"time"
 )
 
@@ -63,7 +62,6 @@ func NewContainer() Container {
 
 type iocContainer struct {
 	isInitialized bool
-	locker        *sync.RWMutex
 	singleton     *singletonContainer
 	transient     *transientContainer
 	parent        ReadonlyContainer
@@ -72,23 +70,19 @@ type iocContainer struct {
 func (container *iocContainer) InitFunc() interface{} {
 	return func() {
 		if !container.isInitialized {
-			container.locker = &sync.RWMutex{}
-			container.singleton = &singletonContainer{valuemapper: make(map[reflect.Type]reflect.Value)}
-			container.transient = &transientContainer{typemapper: make(map[reflect.Type]reflect.Type)}
+			container.singleton = newSingletonContainer()
+			container.transient = newTransientContainer()
 			container.isInitialized = true
 		}
 	}
 }
 
 func (container *iocContainer) Register(val interface{}, lifecycle Lifecycle) {
-	defer container.locker.Unlock()
-	container.locker.Lock()
-
 	typ := reflect.TypeOf(val)
-	if container.transient.Get(typ).IsValid() {
-		lifecycle = Transient
-	} else if container.singleton.Get(typ).IsValid() {
+	if container.singleton.Exists(typ) {
 		lifecycle = Singleton
+	} else if container.transient.Exists(typ) {
+		lifecycle = Transient
 	}
 	switch lifecycle {
 	case Transient:
@@ -105,50 +99,44 @@ func (container *iocContainer) Register(val interface{}, lifecycle Lifecycle) {
 }
 
 func (container *iocContainer) RegisterTo(val interface{}, ifacePtr interface{}, lifecycle Lifecycle) {
-	defer container.locker.Unlock()
-	container.locker.Lock()
-
 	typ := InterfaceOf(ifacePtr)
-	if container.transient.Get(typ).IsValid() {
-		lifecycle = Transient
-	} else if container.singleton.Get(typ).IsValid() {
+	if container.singleton.Exists(typ) {
 		lifecycle = Singleton
+	} else if container.transient.Exists(typ) {
+		lifecycle = Transient
 	}
 	switch lifecycle {
-	case Transient:
-		container.transient.MapTo(val, ifacePtr)
-		if DEBUG {
-			consoleLog.Printf("Container.RegisterTo transient '%v'.\n", typ)
-		}
 	case Singleton:
 		container.singleton.MapTo(val, ifacePtr)
 		if DEBUG {
 			consoleLog.Printf("Container.RegisterTo singleton '%v'.\n", typ)
 		}
+	case Transient:
+		container.transient.MapTo(val, ifacePtr)
+		if DEBUG {
+			consoleLog.Printf("Container.RegisterTo transient '%v'.\n", typ)
+		}
 	}
 }
 
 func (container *iocContainer) Resolve(typ reflect.Type) reflect.Value {
-	defer container.locker.RUnlock()
-	container.locker.RLock()
-
 	startTime := time.Now().UnixNano()
-	var val = container.transient.Get(typ)
-	if val.IsValid() {
-		if initializer, ok := val.Interface().(Initializer); ok {
-			container.Invoke(initializer.InitFunc())
-		}
-		endTime := time.Now().UnixNano()
-		if DEBUG {
-			consoleLog.Printf("Container.Resolve transient '%v' execute in %vms.\n", typ, float64(endTime-startTime)/float64(time.Millisecond))
-		}
-	} else if val = container.singleton.Get(typ); val.IsValid() {
-		if initializer, ok := val.Interface().(Initializer); ok {
-			container.Invoke(initializer.InitFunc())
-		}
+	var val reflect.Value
+	if container.singleton.Exists(typ) {
+		val = container.singleton.Get(typ, func(f interface{}) {
+			container.Invoke(f)
+		})
 		endTime := time.Now().UnixNano()
 		if DEBUG {
 			consoleLog.Printf("Container.Resolve singleton '%v' execute in %vms.\n", typ, float64(endTime-startTime)/float64(time.Millisecond))
+		}
+	} else if container.transient.Exists(typ) {
+		val = container.transient.Get(typ, func(f interface{}) {
+			container.Invoke(f)
+		})
+		endTime := time.Now().UnixNano()
+		if DEBUG {
+			consoleLog.Printf("Container.Resolve transient '%v' execute in %vms.\n", typ, float64(endTime-startTime)/float64(time.Millisecond))
 		}
 	} else if container.parent != nil {
 		val = container.parent.Resolve(typ)
