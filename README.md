@@ -10,6 +10,17 @@ Also you can register a type mapping to an interface as singleton or transient.
 
     go get github.com/berkaroad/ioc
 
+## Change List
+
+* 2016/8/31
+1. Remove readonly lock,
+2. Singleton instance's initialization called only once.
+3. Performance is 15% faster than last version.
+
+* 2016/7/18
+1. first version.
+
+
 ## Performance
 
 2 routine, 4 resolve action, 470,000 / sec,  compile at go 1.7
