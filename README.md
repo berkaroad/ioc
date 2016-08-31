@@ -13,12 +13,12 @@ Also you can register a type mapping to an interface as singleton or transient.
 ## Change List
 
 * 2016/8/31
-1. Remove readonly lock,
-2. Singleton instance's initialization called only once.
-3. Performance is 15% faster than last version.
+    1. Remove readonly lock,
+    2. Singleton instance's initialization called only once.
+    3. Performance is 15% faster than last version.
 
 * 2016/7/18
-1. first version.
+    1. first version.
 
 
 ## Performance
