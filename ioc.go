@@ -89,16 +89,14 @@ type Resolver interface {
 	Resolve(serviceType reflect.Type) reflect.Value
 }
 
-var globalContainer Container
+var globalContainer Container = New()
 var resolverType reflect.Type = reflect.TypeOf((*Resolver)(nil)).Elem()
 
-func init() {
-	reset()
-}
-
-func reset() {
-	globalContainer = &defaultContainer{}
-	AddSingleton[Resolver](globalContainer)
+// New ioc container, and add singleton service 'ioc.Resolver' to it.
+func New() Container {
+	c := &defaultContainer{}
+	c.Register(reflect.TypeOf((*Resolver)(nil)).Elem(), c, nil)
+	return c
 }
 
 // AddSingleton to add singleton instance.
@@ -214,7 +212,7 @@ func GetService[TService any]() TService {
 //
 //	var c client
 //	// inject to func
-//	ioc.Inject(&c)
+//	ioc.Inject(c.Method1)
 //	// inject to *struct
 //	ioc.Inject(&c)
 func Inject(target any) {
@@ -227,7 +225,7 @@ func Inject(target any) {
 			argType := targetType.In(i)
 			val := globalContainer.Resolve(argType)
 			if !val.IsValid() {
-				panic(fmt.Errorf("service '%v' not found", argType))
+				panic(fmt.Errorf("service '%v' not found in ioc container, when injecting to func", argType))
 			} else {
 				in[i] = val
 			}

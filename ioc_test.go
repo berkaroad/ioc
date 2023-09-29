@@ -28,7 +28,7 @@ import (
 
 func TestAddSingleton(t *testing.T) {
 	t.Run("use interface as service and get service success", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		svc1 := &serviceInstance1{name: "instance1"}
 		AddSingleton[service1](svc1)
 		svc1FromIoc := GetService[service1]()
@@ -48,7 +48,7 @@ func TestAddSingleton(t *testing.T) {
 	})
 
 	t.Run("use *struct as service and get service success", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		svc1 := &serviceInstance1{name: "instance1"}
 		AddSingleton[*serviceInstance1](svc1)
 		svc1FromIoc := GetService[*serviceInstance1]()
@@ -68,7 +68,7 @@ func TestAddSingleton(t *testing.T) {
 	})
 
 	t.Run("invalid service should fail", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		func() {
 			defer func() {
 				if r := recover(); r == nil {
@@ -82,7 +82,7 @@ func TestAddSingleton(t *testing.T) {
 
 func TestAddTransient(t *testing.T) {
 	t.Run("use interface as service and get service success", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		AddTransient[service2](func() service2 {
 			return &serviceInstance2{name: "instance2"}
 		})
@@ -104,7 +104,7 @@ func TestAddTransient(t *testing.T) {
 	})
 
 	t.Run("use *struct as service and get service success", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		AddTransient[*serviceInstance2](func() *serviceInstance2 {
 			return &serviceInstance2{name: "instance2"}
 		})
@@ -126,7 +126,7 @@ func TestAddTransient(t *testing.T) {
 	})
 
 	t.Run("invalid service should fail", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		func() {
 			defer func() {
 				if r := recover(); r == nil {
@@ -142,7 +142,7 @@ func TestAddTransient(t *testing.T) {
 
 func TestInject(t *testing.T) {
 	t.Run("inject to func should success", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		AddSingleton[service3](&serviceInstance3{name: "instance3"})
 		AddTransient[*serviceInstance3](func() *serviceInstance3 { return &serviceInstance3{name: "instance3"} })
 		AddTransient[service4](func() service4 { return &serviceInstance4{name: "instance4"} })
@@ -166,7 +166,7 @@ func TestInject(t *testing.T) {
 	})
 
 	t.Run("inject to struct should success", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		AddSingleton[service3](&serviceInstance3{name: "instance3"})
 		AddTransient[*serviceInstance3](func() *serviceInstance3 { return &serviceInstance3{name: "instance3"} })
 		AddTransient[service4](func() service4 { return &serviceInstance4{name: "instance4"} })
@@ -186,11 +186,11 @@ func TestInject(t *testing.T) {
 
 func TestSetParent(t *testing.T) {
 	t.Run("can resolve from parent success", func(t *testing.T) {
-		reset()
+		globalContainer = New()
 		AddSingleton[service5](&serviceInstance3{name: "instance5"})
 		AddTransient[*serviceInstance5](func() *serviceInstance5 { return &serviceInstance5{name: "instance5"} })
 
-		anotherC := &defaultContainer{}
+		anotherC := New()
 		anotherC.Register(reflect.TypeOf((*service6)(nil)).Elem(), &serviceInstance6{name: "instance6"}, nil)
 		anotherC.Register(reflect.TypeOf((*serviceInstance6)(nil)), nil, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
 

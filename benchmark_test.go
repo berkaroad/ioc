@@ -27,7 +27,7 @@ import (
 )
 
 func BenchmarkInjectToFunc(b *testing.B) {
-	reset()
+	globalContainer = New()
 	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
 
 	b.ResetTimer()
@@ -39,7 +39,7 @@ func BenchmarkInjectToFunc(b *testing.B) {
 }
 
 func BenchmarkInjectToStruct(b *testing.B) {
-	reset()
+	globalContainer = New()
 	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
 
 	b.ResetTimer()
