@@ -1,5 +1,5 @@
 // Package ioc is Inversion of Control (IoC).
-// Support lifecycle, such as singleton and transient.
+// Support singleton and transient.
 //
 // The MIT License (MIT)
 //
@@ -25,189 +25,305 @@
 package ioc
 
 import (
+	"errors"
 	"fmt"
-	"log"
-	"os"
 	"reflect"
-	"time"
+	"sync"
 )
 
-var consoleLog = log.New(os.Stdout, "[ioc] ", log.LstdFlags)
-
-// DEBUG is a switcher for debug
-var DEBUG = false
-
-// Lifecycle is singleton or transient
-type Lifecycle int
-
-const (
-	// Singleton is single instance
-	Singleton Lifecycle = 0
-	// Transient is temporary instance
-	Transient Lifecycle = 1
-)
-
-// Initializer is to init a struct.
-type Initializer interface {
-	InitFunc() interface{}
-}
-
-// ReadonlyContainer is a readonly container
-type ReadonlyContainer interface {
-	// Resolve is to get instance of type.
-	Resolve(typ reflect.Type) reflect.Value
-	// Invoke is to inject to function's params, such as construction.
-	Invoke(f interface{}) ([]reflect.Value, error)
-}
-
-// Container is a container for ioc.
+// Inversion of Control container.
 type Container interface {
-	Initializer
-	ReadonlyContainer
-	// Register is to register a type as singleton or transient.
-	Register(val interface{}, lifecycle Lifecycle)
-	// RegisterTo is to register a interface as singleton or transient.
-	RegisterTo(val interface{}, ifacePtr interface{}, lifecycle Lifecycle)
-	// SetParent is to resolve parent's container if current hasn't registered a type.
-	SetParent(parent ReadonlyContainer)
+	Resolver
+
+	// Set parent resolver, for resolving from parent if service not found in current.
+	SetParent(parent Resolver)
+
+	// Register to add singleton instance or transient instance factory.
+	//
+	//  // service
+	//  type Service1 interface {
+	//      Method1()
+	//  }
+	//  // implementation of service
+	//  type ServiceImplementation1 struct {
+	//      Field1 string
+	//  }
+	//  func(si *ServiceImplementation1) Method1() {}
+	//
+	//  var container ioc.Container
+	//  // interface as service, register as singleton
+	//  err := container.Register(reflect.TypeOf((*Service1)(nil)).Elem(), &ServiceImplementation1{Field1: "abc"})
+	//  // or *struct as service, register as singleton
+	//  err = container.Register(reflect.TypeOf((*ServiceImplementation1)(nil)), &ServiceImplementation1{Field1: "abc"})
+	//
+	//  // interface as service, register as transient
+	//  err = container.Register(reflect.TypeOf((*Service1)(nil)).Elem(), func() Service1 {
+	//	    return &ServiceImplementation1{Field1: "abc"}
+	//  })
+	//  // or *struct as service, register as transient
+	//  err = container.Register(reflect.TypeOf((*ServiceImplementation1)(nil)), func() *ServiceImplementation1 {
+	//	    return &ServiceImplementation1{Field1: "abc"}
+	//  })
+	Register(serviceType reflect.Type, singletonInstance any, transientInstanceFactory any) error
 }
 
-// NewContainer : create iocContainer
-func NewContainer() Container {
-	container := &iocContainer{}
-	reflect.ValueOf(container.InitFunc()).Call(nil)
-	container.RegisterTo(container, (*ReadonlyContainer)(nil), Singleton)
-	return container
+// Resolver can resolve service.
+type Resolver interface {
+	// Resolve to get service.
+	//
+	//	// service
+	//	type Service1 interface {
+	//	    Method1()
+	//	}
+	//	// implementation of service
+	//	type ServiceImplementation1 struct {
+	//	    Field1 string
+	//	}
+	//	func(si *ServiceImplementation1) Method1() {}
+	//
+	//	var container ioc.Container
+	//	// interface as service
+	//	service1 := container.Resolve(reflect.TypeOf((*Service1)(nil)).Elem())
+	//	// or *struct as service
+	//	service2 := container.Resolve(reflect.TypeOf((*ServiceImplementation1)(nil)))
+	Resolve(serviceType reflect.Type) reflect.Value
 }
 
-type iocContainer struct {
-	isInitialized bool
-	singleton     *singletonContainer
-	transient     *transientContainer
-	parent        ReadonlyContainer
+var globalContainer Container
+var resolverType reflect.Type = reflect.TypeOf((*Resolver)(nil)).Elem()
+
+func init() {
+	reset()
 }
 
-func (container *iocContainer) InitFunc() interface{} {
-	return func() {
-		if !container.isInitialized {
-			container.singleton = newSingletonContainer()
-			container.transient = newTransientContainer()
-			container.isInitialized = true
+func reset() {
+	globalContainer = &defaultContainer{}
+	AddSingleton[Resolver](globalContainer)
+}
+
+// AddSingleton to add singleton instance.
+//
+// It will panic if 'TService' or 'instance' is invalid.
+//
+//	// service
+//	type Service1 interface {
+//	    Method1()
+//	}
+//	// implementation of service
+//	type ServiceImplementation1 struct {
+//	    Field1 string
+//	}
+//	func(si *ServiceImplementation1) Method1() {}
+//
+//	// interface as service
+//	ioc.AddSingleton[Service1](&ServiceImplementation1{Field1: "abc"})
+//	// or *struct as service
+//	ioc.AddSingleton[*ServiceImplementation1](&ServiceImplementation1{Field1: "abc"})
+func AddSingleton[TService any](instance TService) {
+	err := globalContainer.Register(reflect.TypeOf((*TService)(nil)).Elem(), instance, nil)
+	if err != nil {
+		panic(err)
+	}
+}
+
+// AddTransient to add transient service instance factory.
+//
+// It will panic if 'TService' or 'instance' is invalid.
+//
+//	 // service
+//	 type Service1 interface {
+//	     Method1()
+//	 }
+//	 // implementation of service
+//	 type ServiceImplementation1 struct {
+//	     Field1 string
+//	 }
+//	 func(si *ServiceImplementation1) Method1() {}
+//
+//	 // interface as service
+//	 ioc.AddTransient[Service1](func() Service1 {
+//		    return &ServiceImplementation1{Field1: "abc"}
+//	 })
+//	 // or *struct as service
+//	 ioc.AddTransient[*ServiceImplementation1](func() *ServiceImplementation1 {
+//		    return &ServiceImplementation1{Field1: "abc"}
+//	 })
+func AddTransient[TService any](instanceFactory func() TService) {
+	err := globalContainer.Register(reflect.TypeOf((*TService)(nil)).Elem(), nil, instanceFactory)
+	if err != nil {
+		panic(err)
+	}
+}
+
+// GetService to get service.
+//
+//	// service
+//	type Service1 interface {
+//	    Method1()
+//	}
+//	// implementation of service
+//	type ServiceImplementation1 struct {
+//	    Field1 string
+//	}
+//	func(si *ServiceImplementation1) Method1() {}
+//
+//	// interface as service
+//	service1 := ioc.GetService[Service1]()
+//	// or *struct as service
+//	service2 := ioc.GetService[*ServiceImplementation1]()
+func GetService[TService any]() TService {
+	var instance TService
+	instanceVal := globalContainer.Resolve(reflect.TypeOf((*TService)(nil)).Elem())
+	if !instanceVal.IsValid() {
+		return instance
+	}
+	instanceInterface := instanceVal.Interface()
+	if instanceInterface != nil {
+		if val, ok := instanceInterface.(TService); ok {
+			instance = val
+		}
+	}
+	return instance
+}
+
+// Inject to func or *struct with service in ioc container.
+// Field with type 'ReadonlyContainer', will always been injected.
+//
+// It will panic if param type in func not registered in ioc container.
+//
+//	// service
+//	type Service1 interface {
+//	    Method1()
+//	}
+//
+//	// implementation of service
+//	type ServiceImplementation1 struct {
+//	    Field1 string
+//	}
+//	func(si *ServiceImplementation1) Method1() {}
+//
+//	// client
+//	type Client struct {
+//	    Field1 Service1 `ioc-inject:"true"`
+//	    Field2 *ServiceImplementation1 `ioc-inject:"true"`
+//	}
+//	func(c *Client) Method1(p1 Service1, p2 *ServiceImplementation1) {
+//	    c.Field1 = p1
+//	    c.Field2 = p2
+//	}
+//
+//	var c client
+//	// inject to func
+//	ioc.Inject(&c)
+//	// inject to *struct
+//	ioc.Inject(&c)
+func Inject(target any) {
+	targetVal := reflect.ValueOf(target)
+	targetType := reflect.TypeOf(target)
+	if targetType.Kind() == reflect.Func {
+		// inject to func
+		var in = make([]reflect.Value, targetType.NumIn())
+		for i := 0; i < targetType.NumIn(); i++ {
+			argType := targetType.In(i)
+			val := globalContainer.Resolve(argType)
+			if !val.IsValid() {
+				panic(fmt.Errorf("service '%v' not found", argType))
+			} else {
+				in[i] = val
+			}
+		}
+		targetVal.Call(in)
+	} else if targetType.Kind() == reflect.Pointer && targetType.Elem().Kind() == reflect.Struct {
+		// inject to *struct
+		structType := targetType.Elem()
+		for i := 0; i < structType.NumField(); i++ {
+			field := structType.Field(i)
+			canInject := field.Type == resolverType
+			if !canInject {
+				if val, ok := field.Tag.Lookup("ioc-inject"); ok && val == "true" {
+					canInject = true
+				}
+			}
+			if canInject {
+				fieldVal := globalContainer.Resolve(field.Type)
+				if fieldVal.IsValid() {
+					targetVal.Elem().Field(i).Set(fieldVal)
+				}
+			}
 		}
 	}
 }
 
-func (container *iocContainer) Register(val interface{}, lifecycle Lifecycle) {
-	typ := reflect.TypeOf(val)
-	if container.singleton.Exists(typ) {
-		lifecycle = Singleton
-	} else if container.transient.Exists(typ) {
-		lifecycle = Transient
-	}
-	switch lifecycle {
-	case Transient:
-		container.transient.Map(val)
-		if DEBUG {
-			consoleLog.Printf("ioc.Container.Register transient '%v'.\n", typ)
-		}
-	case Singleton:
-		container.singleton.Map(val)
-		if DEBUG {
-			consoleLog.Printf("ioc.Container.Register singleton '%v'.\n", typ)
-		}
-	}
+// Set parent resolver, for resolving from parent if service not found in current.
+func SetParent(parent Resolver) {
+	globalContainer.SetParent(parent)
 }
 
-func (container *iocContainer) RegisterTo(val interface{}, ifacePtr interface{}, lifecycle Lifecycle) {
-	typ := InterfaceOf(ifacePtr)
-	if container.singleton.Exists(typ) {
-		lifecycle = Singleton
-	} else if container.transient.Exists(typ) {
-		lifecycle = Transient
-	}
-	switch lifecycle {
-	case Singleton:
-		container.singleton.MapTo(val, ifacePtr)
-		if DEBUG {
-			consoleLog.Printf("Container.RegisterTo singleton '%v'.\n", typ)
+var _ Container = (*defaultContainer)(nil)
+
+type defaultContainer struct {
+	bindings sync.Map
+	parent   Resolver
+}
+
+func (c *defaultContainer) Resolve(serviceType reflect.Type) reflect.Value {
+	if bindingVal, ok := c.bindings.Load(serviceType); ok {
+		binding := bindingVal.(serviceBinding)
+		if binding.Instance.IsValid() {
+			return binding.Instance
 		}
-	case Transient:
-		container.transient.MapTo(val, ifacePtr)
-		if DEBUG {
-			consoleLog.Printf("Container.RegisterTo transient '%v'.\n", typ)
+		return binding.InstanceFactory.Call(nil)[0]
+	} else {
+		parent := c.parent
+		if parent != nil {
+			return parent.Resolve(serviceType)
+		} else {
+			return reflect.Value{}
 		}
 	}
 }
 
-func (container *iocContainer) Resolve(typ reflect.Type) reflect.Value {
-	startTime := time.Now().UnixNano()
-	var val reflect.Value
-	if container.singleton.Exists(typ) {
-		val = container.singleton.Get(typ, func(f interface{}) {
-			container.Invoke(f)
-		})
-		endTime := time.Now().UnixNano()
-		if DEBUG {
-			consoleLog.Printf("Container.Resolve singleton '%v' execute in %vms.\n", typ, float64(endTime-startTime)/float64(time.Millisecond))
+func (c *defaultContainer) SetParent(parent Resolver) {
+	c.parent = parent
+}
+
+func (c *defaultContainer) Register(serviceType reflect.Type, singletonInstance any, transinetInstanceFactory any) error {
+	if singletonInstance == nil && transinetInstanceFactory == nil {
+		return errors.New("both instance and instanceFactory are null")
+	}
+	if singletonInstance != nil {
+		return c.addBinding(serviceBinding{ServiceType: serviceType, Instance: reflect.ValueOf(singletonInstance)})
+	} else {
+		return c.addBinding(serviceBinding{ServiceType: serviceType, InstanceFactory: reflect.ValueOf(transinetInstanceFactory)})
+	}
+}
+
+func (c *defaultContainer) addBinding(binding serviceBinding) error {
+	if binding.ServiceType == nil {
+		return errors.New("type of service is null")
+	}
+	if binding.ServiceType.Kind() != reflect.Interface &&
+		!(binding.ServiceType.Kind() == reflect.Pointer && binding.ServiceType.Elem().Kind() == reflect.Struct) {
+		return fmt.Errorf("type of service '%v' should be an interface or *struct", binding.ServiceType)
+	}
+	if binding.Instance.IsValid() {
+		if !binding.Instance.Type().AssignableTo(binding.ServiceType) {
+			return fmt.Errorf("instance should implement the service '%v'", binding.ServiceType)
 		}
-	} else if container.transient.Exists(typ) {
-		val = container.transient.Get(typ, func(f interface{}) {
-			container.Invoke(f)
-		})
-		endTime := time.Now().UnixNano()
-		if DEBUG {
-			consoleLog.Printf("Container.Resolve transient '%v' execute in %vms.\n", typ, float64(endTime-startTime)/float64(time.Millisecond))
+	} else if binding.InstanceFactory.IsValid() {
+		instanceFactoryType := binding.InstanceFactory.Type()
+		if instanceFactoryType.Kind() != reflect.Func ||
+			instanceFactoryType.NumIn() != 0 || instanceFactoryType.NumOut() != 1 ||
+			!instanceFactoryType.Out(0).AssignableTo(binding.ServiceType) {
+			return fmt.Errorf("type of instanceFactory should be a func with no params and return service '%v'", binding.ServiceType)
 		}
-	} else if container.parent != nil {
-		val = container.parent.Resolve(typ)
 	}
-	return val
+	c.bindings.LoadOrStore(binding.ServiceType, binding)
+	return nil
 }
 
-func (container *iocContainer) Invoke(f interface{}) ([]reflect.Value, error) {
-	t := reflect.TypeOf(f)
-	var in = make([]reflect.Value, t.NumIn()) //Panic if t is not kind of Func
-	for i := 0; i < t.NumIn(); i++ {
-		argType := t.In(i)
-		val := container.Resolve(argType)
-		if !val.IsValid() {
-			return nil, fmt.Errorf("value not found for type %v", argType)
-		}
-		in[i] = val
-	}
-	return reflect.ValueOf(f).Call(in), nil
-}
-
-func (container *iocContainer) SetParent(parent ReadonlyContainer) {
-	container.parent = parent
-}
-
-// FromPtrTypeOf is to get real type from a pointer to value
-func FromPtrTypeOf(obj interface{}) reflect.Type {
-	realType := reflect.TypeOf(obj)
-	for realType.Kind() == reflect.Ptr {
-		realType = realType.Elem()
-	}
-	return realType
-}
-
-// FromPtrType is to get real type from a pointer to type
-func FromPtrType(typ reflect.Type) reflect.Type {
-	realType := typ
-	for realType.Kind() == reflect.Ptr {
-		realType = realType.Elem()
-	}
-	return realType
-}
-
-// InterfaceOf is to get interface from a pointer to value
-func InterfaceOf(ifacePtr interface{}) reflect.Type {
-	t := reflect.TypeOf(ifacePtr)
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-	if t.Kind() != reflect.Interface {
-		consoleLog.Panic("Called InterfaceOf with a value that is not a pointer to an interface. (*MyInterface)(nil)")
-	}
-	return t
+type serviceBinding struct {
+	ServiceType     reflect.Type
+	Instance        reflect.Value
+	InstanceFactory reflect.Value
 }
