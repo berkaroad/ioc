@@ -6,11 +6,13 @@ Inversion of Control (IoC)
 
 * 1) Support service as singleton and transient
 
-* 2) Can resolve service by parent if not found in current
+* 2) Support resolve service by parent if not found in current
 
-* 3) Can inject to function or *struct with services that has registered
+* 3) Support inject to function or *struct with services that has registered
 
   Should add struct tag 'ioc-inject:"true"' to field if want to be injected, but field type `ioc.Resolver` is not necessary.
+
+* 4) Support override exists service if mark 'canOverride' as 'true' last
 
 ## Usage
 
@@ -48,16 +50,16 @@ func (c *Class2) GetName() string {
 
 func main() {
     // register service to *struct
-    ioc.AddSingleton[*Class2](&Class2{Name: "Jerry Bai"})
-    ioc.AddTransient[*Class1](func() *Class1 {
+    ioc.AddSingleton[*Class2](true, &Class2{Name: "Jerry Bai"})
+    ioc.AddTransient[*Class1](true, func() *Class1 {
         var svc Class1
         // inject to *struct
         ioc.Inject(&svc)
     }
 
     // register service to interface.
-    ioc.AddSingleton[Interface2](&Class2{Name: "Jerry Bai"})
-    ioc.AddTransient[Interface1](func() Interface1 {
+    ioc.AddSingleton[Interface2](true, &Class2{Name: "Jerry Bai"})
+    ioc.AddTransient[Interface1](true, func() Interface1 {
         var svc Class1
         // inject to *struct
         ioc.Inject(&svc)
@@ -88,10 +90,10 @@ goos: linux
 goarch: amd64
 pkg: github.com/berkaroad/ioc
 cpu: AMD Ryzen 7 5800H with Radeon Graphics         
-BenchmarkInjectToFunc-4          1000000              1473 ns/op             128 B/op          5 allocs/op
-BenchmarkInjectToStruct-4        1000000               862.4 ns/op            48 B/op          3 allocs/op
+BenchmarkInjectToFunc-4          1000000               556.2 ns/op           128 B/op          5 allocs/op
+BenchmarkInjectToStruct-4        1000000               372.7 ns/op            48 B/op          3 allocs/op
 PASS
-ok      github.com/berkaroad/ioc        2.348s
+ok      github.com/berkaroad/ioc        0.933s
 ```
 
 ## Release Notes
@@ -100,9 +102,9 @@ ok      github.com/berkaroad/ioc        2.348s
 
 refactor ioc: for simple and performance.
 
-* 1) add convenient functions
+* 1) Add convenient functions
 
-* 2) support inject to function and *struct
+* 2) Support inject to function and *struct
 
   Should add struct tag 'ioc-inject:"true"' to field if want to be injected, but field type `ioc.Resolver` is not necessary.
 
@@ -110,19 +112,21 @@ refactor ioc: for simple and performance.
 
   Compare with `Container.Invoke()` in last version.
 
-* 4) remove interface `Initializer`
+* 4) Support override exists service if mark 'canOverride' as 'true' last
+
+* 5) Remove interface `Initializer`
 
   Because it is not necessary.
 
-* 5) rename interface `ReadonlyContainer` to `Resolver`
+* 6) Rename interface `ReadonlyContainer` to `Resolver`
 
   Just for `SetParent()` to resolve by parent.
 
-* 6) simplify interface `Container`
+* 7) Simplify interface `Container`
 
   Can customize implementation just for compatibility with others
 
-* 7) remove log
+* 8) Remove log
 
 ### v0.1.1 (2023-10-01)
 
