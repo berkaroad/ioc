@@ -27,13 +27,25 @@ import (
 )
 
 func BenchmarkInjectToFunc(b *testing.B) {
-	var container = NewContainer()
-	container.RegisterTo(&ProductCategoryRepositoryImpl{}, (*ProductCategoryRepository)(nil), Singleton)
+	reset()
+	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		svc := &ProductCategoryApplicationServiceImpl{}
-		container.Invoke(svc.Initialize)
+		Inject(svc.Initialize)
+		svc.Get(context.TODO(), "123")
+	}
+}
+
+func BenchmarkInjectToStruct(b *testing.B) {
+	reset()
+	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		svc := &ProductCategoryApplicationServiceImpl{}
+		Inject(svc)
 		svc.Get(context.TODO(), "123")
 	}
 }
@@ -45,11 +57,11 @@ type ProductCategoryApplicationService interface {
 var _ ProductCategoryApplicationService = (*ProductCategoryApplicationServiceImpl)(nil)
 
 type ProductCategoryApplicationServiceImpl struct {
-	Resolver ReadonlyContainer
+	Resolver Resolver
 	Repo     ProductCategoryRepository `ioc-inject:"true"`
 }
 
-func (svc *ProductCategoryApplicationServiceImpl) Initialize(resolver ReadonlyContainer, repo ProductCategoryRepository) {
+func (svc *ProductCategoryApplicationServiceImpl) Initialize(resolver Resolver, repo ProductCategoryRepository) {
 	svc.Resolver = resolver
 	svc.Repo = repo
 }

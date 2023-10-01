@@ -2,8 +2,15 @@
 
 Inversion of Control (IoC)
 
-You can register a type as singleton or transient.
-Also you can register a type mapping to an interface as singleton or transient.
+## Feature
+
+* 1) Support service as singleton and transient
+
+* 2) Can resolve service by parent if not found in current
+
+* 3) Can inject to function or *struct with services that has registered
+
+  Should add struct tag 'ioc-inject:"true"' to field if want to be injected, but field type `ioc.Resolver` is not necessary.
 
 ## Usage
 
@@ -23,35 +30,16 @@ type Interface2 interface {
 }
 
 type Class1 struct {
-    C2Name          string
-    isInitialized   bool
-}
-
-func (c *Class1) InitFunc() interface{} {
-    return func(c2 *Class2) {
-        if !c.isInitialized {
-            c.isInitialized = true
-            c.C2Name = c2.Name
-        }
-    }
+    Resolver ioc.Resolver
+    C2       *Class2 `ioc-inject:"true"`
 }
 
 func (c *Class1) GetC2Name() string {
-    return c.C2Name
+    return c.C2.Name
 }
 
 type Class2 struct {
-    Name            string
-    isInitialized   bool
-}
-
-func (c *Class2) InitFunc() interface{} {
-    return func() {
-        if !c.isInitialized {
-            c.isInitialized = true
-            c.Name = "Tomcat"
-        }
-    }
+    Name     string
 }
 
 func (c *Class2) GetName() string {
@@ -59,24 +47,26 @@ func (c *Class2) GetName() string {
 }
 
 func main() {
-    var container = ioc.NewContainer()
+    // register service to *struct
+    ioc.AddSingleton[*Class2](&Class2{Name: "Jerry Bai"})
+    ioc.AddTransient[*Class1](func() *Class1 {
+        var c1 Class1
+        // inject to *struct
+        ioc.Inject(&c1)
+    }
 
-    // Register class
-    container.Register(&Class1{}, ioc.Singleton)
-    container.Register(&Class2{Name: "Jerry Bai"}, ioc.Singleton)
+    // register service to interface.
+    ioc.AddSingleton[Interface2](&Class2{Name: "Jerry Bai"})
+    ioc.AddTransient[Interface1](func() Interface1 {
+        var c1 Class1
+        // inject to *struct
+        ioc.Inject(&c1)
+    }
 
-    // Register class mapping to interface.
-    container.RegisterTo(&Class1{}, (*Interface1)(nil), ioc.Transient)
-    container.RegisterTo(&Class2{Name: "Jerry Bai"}, (*Interface2)(nil), ioc.Transient)
-
-    // Like class's construction, inject class instance
-    container.Invoke(func(c1 *Class1, c2 *Class2, roContainer ioc.ReadonlyContainer) {
-        println("c1.C2Name=", c1.C2Name)
+    // inject to function
+    ioc.Inject(func(c1 *Class1, c2 *Class2, i1 Interface1, i2 Interface2, resolver ioc.Resolver) {
+        println("c1.C2Name=", c1.C2.Name)
         println("c2.Name=", c2.Name)
-    })
-
-    // Like class's construction, inject interface instance
-    container.Invoke(func(i1 Interface1, i2 Interface2, roContainer ioc.ReadonlyContainer) {
         println("i1.GetC2Name=()", i1.GetC2Name())
         println("i2.GetName=()", i2.GetName())
     })
@@ -92,12 +82,41 @@ goos: linux
 goarch: amd64
 pkg: github.com/berkaroad/ioc
 cpu: AMD Ryzen 7 5800H with Radeon Graphics         
-BenchmarkInjectToFunc-4          1000000              2251 ns/op             128 B/op          5 allocs/op
+BenchmarkInjectToFunc-4          1000000              1473 ns/op             128 B/op          5 allocs/op
+BenchmarkInjectToStruct-4        1000000               862.4 ns/op            48 B/op          3 allocs/op
 PASS
-ok      github.com/berkaroad/ioc        2.260s
+ok      github.com/berkaroad/ioc        2.348s
 ```
 
 ## Release Notes
+
+### v1.0 (2023-10-01)
+
+refactor ioc: for simple and performance.
+
+* 1) add convenient functions
+
+* 2) support inject to function and *struct
+
+  Should add struct tag 'ioc-inject:"true"' to field if want to be injected, but field type `ioc.Resolver` is not necessary.
+
+* 3) 50% faster than last version, when injecting to function
+
+  Compare with `Container.Invoke()` in last version.
+
+* 4) remove interface `Initializer`
+
+  Because it is not necessary.
+
+* 5) rename interface `ReadonlyContainer` to `Resolver`
+
+  Just for `SetParent()` to resolve by parent.
+
+* 6) simplify interface `Container`
+
+  Can customize implementation just for compatibility with others
+
+* 7) remove log
 
 ### v0.1.1 (2023-10-01)
 
