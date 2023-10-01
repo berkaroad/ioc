@@ -31,6 +31,16 @@ import (
 	"sync"
 )
 
+var globalContainer Container = New()
+var resolverType reflect.Type = reflect.TypeOf((*Resolver)(nil)).Elem()
+
+// New ioc container, and add singleton service 'ioc.Resolver' to it.
+func New() Container {
+	c := &defaultContainer{}
+	c.Register(reflect.TypeOf((*Resolver)(nil)).Elem(), c, nil)
+	return c
+}
+
 // Inversion of Control container.
 type Container interface {
 	Resolver
@@ -87,16 +97,6 @@ type Resolver interface {
 	//	// or *struct as service
 	//	service2 := container.Resolve(reflect.TypeOf((*ServiceImplementation1)(nil)))
 	Resolve(serviceType reflect.Type) reflect.Value
-}
-
-var globalContainer Container = New()
-var resolverType reflect.Type = reflect.TypeOf((*Resolver)(nil)).Elem()
-
-// New ioc container, and add singleton service 'ioc.Resolver' to it.
-func New() Container {
-	c := &defaultContainer{}
-	c.Register(reflect.TypeOf((*Resolver)(nil)).Elem(), c, nil)
-	return c
 }
 
 // AddSingleton to add singleton instance.
