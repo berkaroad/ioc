@@ -50,18 +50,24 @@ func main() {
     // register service to *struct
     ioc.AddSingleton[*Class2](&Class2{Name: "Jerry Bai"})
     ioc.AddTransient[*Class1](func() *Class1 {
-        var c1 Class1
+        var svc Class1
         // inject to *struct
-        ioc.Inject(&c1)
+        ioc.Inject(&svc)
     }
 
     // register service to interface.
     ioc.AddSingleton[Interface2](&Class2{Name: "Jerry Bai"})
     ioc.AddTransient[Interface1](func() Interface1 {
-        var c1 Class1
+        var svc Class1
         // inject to *struct
-        ioc.Inject(&c1)
+        ioc.Inject(&svc)
     }
+
+    // get service from ioc
+    c1 := ioc.GetService[*Class1]
+    c2 := ioc.GetService[*Class2]
+    i1 := ioc.GetService[Interface1]
+    i2 := ioc.GetService[Interface2]
 
     // inject to function
     ioc.Inject(func(c1 *Class1, c2 *Class2, i1 Interface1, i2 Interface2, resolver ioc.Resolver) {
