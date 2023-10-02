@@ -12,6 +12,10 @@ Inversion of Control (IoC)
 
   Should add struct tag 'ioc-inject:"true"' to field if want to be injected, but field type `ioc.Resolver` is not necessary.
 
+* 4) Support override exists service
+
+  Register to parent's container, and then register to current's to override parent's.
+
 ## Usage
 
 ```go
@@ -46,6 +50,26 @@ func (c *Class2) GetName() string {
     return c.Name
 }
 
+type Interface3 interface {
+    GetName() string
+}
+
+type Class3 struct {
+    Name     string
+}
+
+func (c *Class3) GetName() string {
+    return "Class3-" + c.Name
+}
+
+type Class4 struct {
+    Name     string
+}
+
+func (c *Class4) GetName() string {
+    return "Class3-" + c.Name
+}
+
 func main() {
     // register service to *struct
     ioc.AddSingleton[*Class2](&Class2{Name: "Jerry Bai"})
@@ -76,6 +100,14 @@ func main() {
         println("i1.GetC2Name=()", i1.GetC2Name())
         println("i2.GetName=()", i2.GetName())
     })
+
+    // override exists service
+    c := ioc.New()
+    ioc.SetParent(c)
+    ioc.AddSingletonToC[Interface3](c, &Class3{Name: "Jerry Bai"}) // add service to parent's container
+    i3 := ioc.GetService[Interface3]() // *Class3, 'Interface3' only exists in parent's container
+    ioc.AddSingleton[Interface3](&Class4{Name: "Jerry Bai"}) // add service to global's container
+    i3 = ioc.GetService[Interface3]() // *Class4, 'Interface3' exists in both global and parent's container
 }
 ```
 
@@ -97,8 +129,6 @@ ok      github.com/berkaroad/ioc        0.933s
 ## Release Notes
 
 ### v1.1 (2023-10-03)
-
-refactor ioc: for simple and performance.
 
 * 1) add `New() Container`
 
