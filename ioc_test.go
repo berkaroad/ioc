@@ -22,7 +22,6 @@
 package ioc
 
 import (
-	"reflect"
 	"testing"
 )
 
@@ -30,7 +29,7 @@ func TestAddSingleton(t *testing.T) {
 	t.Run("use interface as service and get service success", func(t *testing.T) {
 		globalContainer = New()
 		svc1 := &serviceInstance1{name: "instance1"}
-		AddSingleton[service1](false, svc1)
+		AddSingleton[service1](svc1)
 		svc1FromIoc := GetService[service1]()
 		if svc1FromIoc == nil {
 			t.Error("get service null")
@@ -45,7 +44,7 @@ func TestAddSingleton(t *testing.T) {
 	t.Run("use *struct as service and get service success", func(t *testing.T) {
 		globalContainer = New()
 		svc1 := &serviceInstance1{name: "instance1"}
-		AddSingleton[*serviceInstance1](false, svc1)
+		AddSingleton[*serviceInstance1](svc1)
 		svc1FromIoc := GetService[*serviceInstance1]()
 		if svc1FromIoc == nil {
 			t.Error("get service null")
@@ -65,76 +64,15 @@ func TestAddSingleton(t *testing.T) {
 					t.Error("type of service 'serviceInstance1' should be interface or *struct")
 				}
 			}()
-			AddSingleton[serviceInstance1](false, serviceInstance1{})
+			AddSingleton[serviceInstance1](serviceInstance1{})
 		}()
-	})
-
-	t.Run("override service that mark canOverride as true should success", func(t *testing.T) {
-		globalContainer = New()
-		svc1 := &serviceInstance1{name: "instance1"}
-		AddSingleton[service1](true, svc1)
-		svc1FromIoc := GetService[service1]()
-		if svc1FromIoc == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc1FromIoc != svc1 {
-			t.Error("service should be singleton")
-			return
-		}
-
-		AddTransient[service1](false, func() service1 { return &serviceInstance1{name: "override-instance1"} })
-		svc1FromIoc = GetService[service1]()
-		if svc1FromIoc == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc1FromIoc == svc1 {
-			t.Error("service should be another one")
-			return
-		}
-		svc1FromIocAgain := GetService[service1]()
-		if svc1FromIocAgain == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc1FromIoc == svc1FromIocAgain {
-			t.Error("service should be transient")
-			return
-		}
-	})
-
-	t.Run("override service that mark canOverride as false should fail", func(t *testing.T) {
-		globalContainer = New()
-		svc1 := &serviceInstance1{name: "instance1"}
-		AddSingleton[service1](false, svc1)
-		svc1FromIoc := GetService[service1]()
-		if svc1FromIoc == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc1FromIoc != svc1 {
-			t.Error("service should be singleton")
-			return
-		}
-
-		AddTransient[service1](true, func() service1 { return &serviceInstance1{name: "override-instance1"} })
-		svc1FromIoc = GetService[service1]()
-		if svc1FromIoc == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc1FromIoc != svc1 {
-			t.Error("service should be singleton")
-			return
-		}
 	})
 }
 
 func TestAddTransient(t *testing.T) {
 	t.Run("use interface as service and get service success", func(t *testing.T) {
 		globalContainer = New()
-		AddTransient[service2](false, func() service2 { return &serviceInstance2{name: "instance2"} })
+		AddTransient[service2](func() service2 { return &serviceInstance2{name: "instance2"} })
 		svc2FromIoc := GetService[service2]()
 		if svc2FromIoc == nil {
 			t.Error("get service null")
@@ -154,7 +92,7 @@ func TestAddTransient(t *testing.T) {
 
 	t.Run("use *struct as service and get service success", func(t *testing.T) {
 		globalContainer = New()
-		AddTransient[*serviceInstance2](false, func() *serviceInstance2 { return &serviceInstance2{name: "instance2"} })
+		AddTransient[*serviceInstance2](func() *serviceInstance2 { return &serviceInstance2{name: "instance2"} })
 		svc2FromIoc := GetService[*serviceInstance2]()
 		if svc2FromIoc == nil {
 			t.Error("get service null")
@@ -180,90 +118,18 @@ func TestAddTransient(t *testing.T) {
 					t.Error("type of service 'serviceInstance1' should be interface or *struct")
 				}
 			}()
-			AddTransient[serviceInstance1](false, func() serviceInstance1 { return serviceInstance1{} })
+			AddTransient[serviceInstance1](func() serviceInstance1 { return serviceInstance1{} })
 		}()
-	})
-
-	t.Run("override service that mark canOverride as true should success", func(t *testing.T) {
-		globalContainer = New()
-		AddTransient[service2](true, func() service2 { return &serviceInstance2{name: "instance2"} })
-		svc2FromIoc := GetService[service2]()
-		if svc2FromIoc == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc2FromIoc.GetName() != "instance2" {
-			t.Error("name of service should be instance2")
-			return
-		}
-		svc2 := svc2FromIoc
-		svc2FromIoc = GetService[service2]()
-		if svc2FromIoc == svc2 {
-			t.Error("service should be transient")
-			return
-		}
-
-		AddSingleton[service2](false, &serviceInstance2{name: "override-instance2"})
-		svc2FromIoc = GetService[service2]()
-		if svc2FromIoc == nil {
-			t.Error("get service null")
-			return
-		}
-		svc2FromIocAgain := GetService[service2]()
-		if svc2FromIocAgain == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc2FromIoc != svc2FromIocAgain {
-			t.Error("service should be singleton")
-			return
-		}
-	})
-
-	t.Run("override service that mark canOverride as false should fail", func(t *testing.T) {
-		globalContainer = New()
-		AddTransient[service2](false, func() service2 { return &serviceInstance2{name: "instance2"} })
-		svc2FromIoc := GetService[service2]()
-		if svc2FromIoc == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc2FromIoc.GetName() != "instance2" {
-			t.Error("name of service should be instance2")
-			return
-		}
-		svc2 := svc2FromIoc
-		svc2FromIoc = GetService[service2]()
-		if svc2FromIoc == svc2 {
-			t.Error("service should be transient")
-			return
-		}
-
-		AddSingleton[service2](true, &serviceInstance2{name: "override-instance2"})
-		svc2FromIoc = GetService[service2]()
-		if svc2FromIoc == nil {
-			t.Error("get service null")
-			return
-		}
-		svc2FromIocAgain := GetService[service2]()
-		if svc2FromIocAgain == nil {
-			t.Error("get service null")
-			return
-		}
-		if svc2FromIoc == svc2FromIocAgain {
-			t.Error("service should be another one")
-			return
-		}
 	})
 }
 
 func TestInject(t *testing.T) {
 	t.Run("inject to func should success", func(t *testing.T) {
 		globalContainer = New()
-		AddSingleton[service3](false, &serviceInstance3{name: "instance3"})
-		AddTransient[*serviceInstance3](false, func() *serviceInstance3 { return &serviceInstance3{name: "instance3"} })
-		AddTransient[service4](false, func() service4 { return &serviceInstance4{name: "instance4"} })
-		AddSingleton[*serviceInstance4](false, &serviceInstance4{name: "instance4"})
+		AddSingleton[service3](&serviceInstance3{name: "instance3"})
+		AddTransient[*serviceInstance3](func() *serviceInstance3 { return &serviceInstance3{name: "instance3"} })
+		AddTransient[service4](func() service4 { return &serviceInstance4{name: "instance4"} })
+		AddSingleton[*serviceInstance4](&serviceInstance4{name: "instance4"})
 
 		var c client
 		Inject(c.Func1)
@@ -284,10 +150,10 @@ func TestInject(t *testing.T) {
 
 	t.Run("inject to struct should success", func(t *testing.T) {
 		globalContainer = New()
-		AddSingleton[service3](false, &serviceInstance3{name: "instance3"})
-		AddTransient[*serviceInstance3](false, func() *serviceInstance3 { return &serviceInstance3{name: "instance3"} })
-		AddTransient[service4](false, func() service4 { return &serviceInstance4{name: "instance4"} })
-		AddSingleton[*serviceInstance4](false, &serviceInstance4{name: "instance4"})
+		AddSingleton[service3](&serviceInstance3{name: "instance3"})
+		AddTransient[*serviceInstance3](func() *serviceInstance3 { return &serviceInstance3{name: "instance3"} })
+		AddTransient[service4](func() service4 { return &serviceInstance4{name: "instance4"} })
+		AddSingleton[*serviceInstance4](&serviceInstance4{name: "instance4"})
 
 		var c client
 		Inject(&c)
@@ -304,12 +170,12 @@ func TestInject(t *testing.T) {
 func TestSetParent(t *testing.T) {
 	t.Run("can resolve from parent success", func(t *testing.T) {
 		globalContainer = New()
-		AddSingleton[service5](false, &serviceInstance5{name: "instance5"})
-		AddTransient[*serviceInstance5](false, func() *serviceInstance5 { return &serviceInstance5{name: "instance5"} })
+		AddSingleton[service5](&serviceInstance5{name: "instance5"})
+		AddTransient[*serviceInstance5](func() *serviceInstance5 { return &serviceInstance5{name: "instance5"} })
 
 		anotherC := New()
-		anotherC.Register(reflect.TypeOf((*service6)(nil)).Elem(), false, &serviceInstance6{name: "instance6"}, nil)
-		anotherC.Register(reflect.TypeOf((*serviceInstance6)(nil)), false, nil, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
+		AddSingletonToC[service6](anotherC, &serviceInstance6{name: "instance6"})
+		AddTransientToC[*serviceInstance6](anotherC, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
 
 		if svc := GetService[service6](); svc != nil {
 			t.Error("service should not found in current")
@@ -322,6 +188,80 @@ func TestSetParent(t *testing.T) {
 			t.Error("service should found in parent")
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+	})
+
+	t.Run("parent is null or equals with last one should ignore", func(t *testing.T) {
+		globalContainer = New()
+
+		anotherC := New()
+		AddSingletonToC[service6](anotherC, &serviceInstance6{name: "instance6"})
+		AddTransientToC[*serviceInstance6](anotherC, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
+
+		if svc := GetService[service6](); svc != nil {
+			t.Error("service should not found in current")
+		}
+		if svc := GetService[*serviceInstance6](); svc != nil {
+			t.Error("service should not found in current")
+		}
+		SetParent(anotherC)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		SetParent(nil)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		SetParent(anotherC)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+	})
+
+	t.Run("set parent twice, last parent should been new parent's parent ", func(t *testing.T) {
+		globalContainer = New()
+
+		anotherC := New()
+		AddSingletonToC[service6](anotherC, &serviceInstance6{name: "instance6"})
+		AddTransientToC[*serviceInstance6](anotherC, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
+
+		anotherC2 := New()
+		AddSingletonToC[service5](anotherC2, &serviceInstance5{name: "instance5"})
+		AddTransientToC[*serviceInstance5](anotherC2, func() *serviceInstance5 { return &serviceInstance5{name: "instance5"} })
+		if svc := GetService[service6](); svc != nil {
+			t.Error("service should not found in current")
+		}
+		if svc := GetService[*serviceInstance6](); svc != nil {
+			t.Error("service should not found in current")
+		}
+		SetParent(anotherC)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		SetParent(anotherC2)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[service5](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance5](); svc == nil {
 			t.Error("service should found in parent")
 		}
 	})
