@@ -12,8 +12,6 @@ Inversion of Control (IoC)
 
   Should add struct tag 'ioc-inject:"true"' to field if want to be injected, but field type `ioc.Resolver` is not necessary.
 
-* 4) Support override exists service if mark 'canOverride' as 'true' last
-
 ## Usage
 
 ```go
@@ -50,16 +48,16 @@ func (c *Class2) GetName() string {
 
 func main() {
     // register service to *struct
-    ioc.AddSingleton[*Class2](true, &Class2{Name: "Jerry Bai"})
-    ioc.AddTransient[*Class1](true, func() *Class1 {
+    ioc.AddSingleton[*Class2](&Class2{Name: "Jerry Bai"})
+    ioc.AddTransient[*Class1](func() *Class1 {
         var svc Class1
         // inject to *struct
         ioc.Inject(&svc)
     }
 
     // register service to interface.
-    ioc.AddSingleton[Interface2](true, &Class2{Name: "Jerry Bai"})
-    ioc.AddTransient[Interface1](true, func() Interface1 {
+    ioc.AddSingleton[Interface2](&Class2{Name: "Jerry Bai"})
+    ioc.AddTransient[Interface1](func() Interface1 {
         var svc Class1
         // inject to *struct
         ioc.Inject(&svc)
@@ -98,13 +96,21 @@ ok      github.com/berkaroad/ioc        0.933s
 
 ## Release Notes
 
+### v1.1 (2023-10-03)
+
+refactor ioc: for simple and performance.
+
+* 1) add `New() Container`
+
+* 2) add convenient functions for interface `Container`
+
 ### v1.0 (2023-10-01)
 
 refactor ioc: for simple and performance.
 
-* 1) Add convenient functions
+* 1) add convenient functions
 
-* 2) Support inject to function and *struct
+* 2) support inject to function and *struct
 
   Should add struct tag 'ioc-inject:"true"' to field if want to be injected, but field type `ioc.Resolver` is not necessary.
 
@@ -112,21 +118,19 @@ refactor ioc: for simple and performance.
 
   Compare with `Container.Invoke()` in last version.
 
-* 4) Support override exists service if mark 'canOverride' as 'true' last
-
-* 5) Remove interface `Initializer`
+* 4) remove interface `Initializer`
 
   Because it is not necessary.
 
-* 6) Rename interface `ReadonlyContainer` to `Resolver`
+* 5) rename interface `ReadonlyContainer` to `Resolver`
 
   Just for `SetParent()` to resolve by parent.
 
-* 7) Simplify interface `Container`
+* 6) simplify interface `Container`
 
   Can customize implementation just for compatibility with others
 
-* 8) Remove log
+* 7) remove log
 
 ### v0.1.1 (2023-10-01)
 

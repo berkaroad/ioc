@@ -37,7 +37,7 @@ var resolverType reflect.Type = reflect.TypeOf((*Resolver)(nil)).Elem()
 // New ioc container, and add singleton service 'ioc.Resolver' to it.
 func New() Container {
 	var c Container = &defaultContainer{}
-	c.Register(reflect.TypeOf((*Resolver)(nil)).Elem(), false, c, nil)
+	c.Register(reflect.TypeOf((*Resolver)(nil)).Elem(), c, nil)
 	return c
 }
 
@@ -62,45 +62,44 @@ type Container interface {
 	//
 	//  var container ioc.Container
 	//  // interface as service, register as singleton
-	//  err := container.Register(reflect.TypeOf((*Service1)(nil)).Elem(), true, &ServiceImplementation1{Field1: "abc"}, nil)
+	//  err := container.Register(reflect.TypeOf((*Service1)(nil)).Elem(), &ServiceImplementation1{Field1: "abc"}, nil)
 	//  // or *struct as service, register as singleton
-	//  err = container.Register(reflect.TypeOf((*ServiceImplementation1)(nil)), true, &ServiceImplementation1{Field1: "abc"}, nil)
+	//  err = container.Register(reflect.TypeOf((*ServiceImplementation1)(nil)), &ServiceImplementation1{Field1: "abc"}, nil)
 	//
 	//  // interface as service, register as transient
-	//  err = container.Register(reflect.TypeOf((*Service1)(nil)).Elem(), true, nil, func() Service1 {
-	//	    return &ServiceImplementation1{Field1: "abc"}
+	//  err = container.Register(reflect.TypeOf((*Service1)(nil)).Elem(), nil, func() Service1 {
+	//      return &ServiceImplementation1{Field1: "abc"}
 	//  })
 	//  // or *struct as service, register as transient
-	//  err = container.Register(reflect.TypeOf((*ServiceImplementation1)(nil)), true, nil, func() *ServiceImplementation1 {
-	//	    return &ServiceImplementation1{Field1: "abc"}
+	//  err = container.Register(reflect.TypeOf((*ServiceImplementation1)(nil)), nil, func() *ServiceImplementation1 {
+	//      return &ServiceImplementation1{Field1: "abc"}
 	//  })
-	Register(serviceType reflect.Type, canOverride bool, singletonInstance any, transientInstanceFactory any) error
+	Register(serviceType reflect.Type, singletonInstance any, transientInstanceFactory any) error
 }
 
 // Resolver can resolve service.
 type Resolver interface {
 	// Resolve to get service.
 	//
-	//	// service
-	//	type Service1 interface {
-	//	    Method1()
-	//	}
-	//	// implementation of service
-	//	type ServiceImplementation1 struct {
-	//	    Field1 string
-	//	}
-	//	func(si *ServiceImplementation1) Method1() {}
+	//  // service
+	//  type Service1 interface {
+	//      Method1()
+	//  }
+	//  // implementation of service
+	//  type ServiceImplementation1 struct {
+	//      Field1 string
+	//  }
+	//  func(si *ServiceImplementation1) Method1() {}
 	//
-	//	var container ioc.Container
-	//	// interface as service
-	//	service1 := container.Resolve(reflect.TypeOf((*Service1)(nil)).Elem())
-	//	// or *struct as service
-	//	service2 := container.Resolve(reflect.TypeOf((*ServiceImplementation1)(nil)))
+	//  var container ioc.Container
+	//  // interface as service
+	//  service1 := container.Resolve(reflect.TypeOf((*Service1)(nil)).Elem())
+	//  // or *struct as service
+	//  service2 := container.Resolve(reflect.TypeOf((*ServiceImplementation1)(nil)))
 	Resolve(serviceType reflect.Type) reflect.Value
 }
 
 // AddSingleton to add singleton instance.
-// can override exists service if has set 'canOverride' to 'true' before.
 //
 // It will panic if 'TService' or 'instance' is invalid.
 //
@@ -115,41 +114,54 @@ type Resolver interface {
 //	func(si *ServiceImplementation1) Method1() {}
 //
 //	// interface as service
-//	ioc.AddSingleton[Service1](true, &ServiceImplementation1{Field1: "abc"})
+//	ioc.AddSingleton[Service1](&ServiceImplementation1{Field1: "abc"})
 //	// or *struct as service
-//	ioc.AddSingleton[*ServiceImplementation1](true, &ServiceImplementation1{Field1: "abc"})
-func AddSingleton[TService any](canOverride bool, instance TService) {
-	err := globalContainer.Register(reflect.TypeOf((*TService)(nil)).Elem(), canOverride, instance, nil)
+//	ioc.AddSingleton[*ServiceImplementation1](&ServiceImplementation1{Field1: "abc"})
+func AddSingleton[TService any](instance TService) {
+	AddSingletonToC[TService](globalContainer, instance)
+}
+
+// AddSingletonToC to add singleton instance to container.
+//
+// It will panic if 'TService' or 'instance' is invalid.
+func AddSingletonToC[TService any](container Container, instance TService) {
+	err := container.Register(reflect.TypeOf((*TService)(nil)).Elem(), instance, nil)
 	if err != nil {
 		panic(err)
 	}
 }
 
 // AddTransient to add transient service instance factory.
-// can override exists service if has set 'canOverride' to 'true' before.
 //
 // It will panic if 'TService' or 'instance' is invalid.
 //
-//	 // service
-//	 type Service1 interface {
-//	     Method1()
-//	 }
-//	 // implementation of service
-//	 type ServiceImplementation1 struct {
-//	     Field1 string
-//	 }
-//	 func(si *ServiceImplementation1) Method1() {}
+//	// service
+//	type Service1 interface {
+//	    Method1()
+//	}
+//	// implementation of service
+//	type ServiceImplementation1 struct {
+//	    Field1 string
+//	}
+//	func(si *ServiceImplementation1) Method1() {}
 //
-//	 // interface as service
-//	 ioc.AddTransient[Service1](true, func() Service1 {
-//		    return &ServiceImplementation1{Field1: "abc"}
-//	 })
-//	 // or *struct as service
-//	 ioc.AddTransient[*ServiceImplementation1](true, func() *ServiceImplementation1 {
-//		    return &ServiceImplementation1{Field1: "abc"}
-//	 })
-func AddTransient[TService any](canOverride bool, instanceFactory func() TService) {
-	err := globalContainer.Register(reflect.TypeOf((*TService)(nil)).Elem(), canOverride, nil, instanceFactory)
+//	// interface as service
+//	ioc.AddTransient[Service1](func() Service1 {
+//	     return &ServiceImplementation1{Field1: "abc"}
+//	})
+//	// or *struct as service
+//	ioc.AddTransient[*ServiceImplementation1](func() *ServiceImplementation1 {
+//	     return &ServiceImplementation1{Field1: "abc"}
+//	})
+func AddTransient[TService any](instanceFactory func() TService) {
+	AddTransientToC[TService](globalContainer, instanceFactory)
+}
+
+// AddTransientToC to add transient service instance factory to container.
+//
+// It will panic if 'TService' or 'instance' is invalid.
+func AddTransientToC[TService any](container Container, instanceFactory func() TService) {
+	err := container.Register(reflect.TypeOf((*TService)(nil)).Elem(), nil, instanceFactory)
 	if err != nil {
 		panic(err)
 	}
@@ -172,8 +184,13 @@ func AddTransient[TService any](canOverride bool, instanceFactory func() TServic
 //	// or *struct as service
 //	service2 := ioc.GetService[*ServiceImplementation1]()
 func GetService[TService any]() TService {
+	return GetServiceFromC[TService](globalContainer)
+}
+
+// GetServiceFromC to get service from container.
+func GetServiceFromC[TService any](container Container) TService {
 	var instance TService
-	instanceVal := globalContainer.Resolve(reflect.TypeOf((*TService)(nil)).Elem())
+	instanceVal := container.Resolve(reflect.TypeOf((*TService)(nil)).Elem())
 	if !instanceVal.IsValid() {
 		return instance
 	}
@@ -186,10 +203,10 @@ func GetService[TService any]() TService {
 	return instance
 }
 
-// Inject to func or *struct with service in ioc container.
+// Inject to func or *struct with service.
 // Field with type 'ioc.Resolver', will always been injected.
 //
-// It will panic if param type in func not registered in ioc container.
+// It will panic if param type in func not registered in container.
 //
 //	// service
 //	type Service1 interface {
@@ -218,6 +235,14 @@ func GetService[TService any]() TService {
 //	// inject to *struct
 //	ioc.Inject(&c)
 func Inject(target any) {
+	InjectFromC(globalContainer, target)
+}
+
+// InjectFromC to inject to func or *struct with service from container.
+// Field with type 'ioc.Resolver', will always been injected.
+//
+// It will panic if param type in func not registered in container.
+func InjectFromC(container Container, target any) {
 	targetVal := reflect.ValueOf(target)
 	targetType := reflect.TypeOf(target)
 	if targetType.Kind() == reflect.Func {
@@ -225,7 +250,7 @@ func Inject(target any) {
 		var in = make([]reflect.Value, targetType.NumIn())
 		for i := 0; i < targetType.NumIn(); i++ {
 			argType := targetType.In(i)
-			val := globalContainer.Resolve(argType)
+			val := container.Resolve(argType)
 			if !val.IsValid() {
 				panic(fmt.Errorf("service '%v' not found in ioc container, when injecting to func", argType))
 			} else {
@@ -245,7 +270,7 @@ func Inject(target any) {
 				}
 			}
 			if canInject {
-				fieldVal := globalContainer.Resolve(field.Type)
+				fieldVal := container.Resolve(field.Type)
 				if fieldVal.IsValid() {
 					targetVal.Elem().Field(i).Set(fieldVal)
 				}
@@ -287,14 +312,14 @@ func (c *defaultContainer) SetParent(parent Resolver) {
 	c.parent = parent
 }
 
-func (c *defaultContainer) Register(serviceType reflect.Type, canOverride bool, singletonInstance any, transinetInstanceFactory any) error {
+func (c *defaultContainer) Register(serviceType reflect.Type, singletonInstance any, transinetInstanceFactory any) error {
 	if singletonInstance == nil && transinetInstanceFactory == nil {
 		return errors.New("both instance and instanceFactory are null")
 	}
 	if singletonInstance != nil {
-		return c.addBinding(serviceBinding{ServiceType: serviceType, CanOverride: canOverride, Instance: reflect.ValueOf(singletonInstance)})
+		return c.addBinding(serviceBinding{ServiceType: serviceType, Instance: reflect.ValueOf(singletonInstance)})
 	} else {
-		return c.addBinding(serviceBinding{ServiceType: serviceType, CanOverride: canOverride, InstanceFactory: reflect.ValueOf(transinetInstanceFactory)})
+		return c.addBinding(serviceBinding{ServiceType: serviceType, InstanceFactory: reflect.ValueOf(transinetInstanceFactory)})
 	}
 }
 
@@ -318,18 +343,12 @@ func (c *defaultContainer) addBinding(binding serviceBinding) error {
 			return fmt.Errorf("type of instanceFactory should be a func with no params and return service '%v'", binding.ServiceType)
 		}
 	}
-	if actual, loaded := c.bindings.LoadOrStore(binding.ServiceType, binding); loaded {
-		existsBinding := actual.(serviceBinding)
-		if existsBinding.CanOverride {
-			c.bindings.Store(binding.ServiceType, binding)
-		}
-	}
+	c.bindings.LoadOrStore(binding.ServiceType, binding)
 	return nil
 }
 
 type serviceBinding struct {
 	ServiceType     reflect.Type
-	CanOverride     bool
 	Instance        reflect.Value
 	InstanceFactory reflect.Value
 }
