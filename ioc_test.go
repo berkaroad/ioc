@@ -168,10 +168,8 @@ func TestInject(t *testing.T) {
 }
 
 func TestSetParent(t *testing.T) {
-	t.Run("can resolve from parent success", func(t *testing.T) {
+	t.Run("resolve from parent success", func(t *testing.T) {
 		globalContainer = New()
-		AddSingleton[service5](&serviceInstance5{name: "instance5"})
-		AddTransient[*serviceInstance5](func() *serviceInstance5 { return &serviceInstance5{name: "instance5"} })
 
 		anotherC := New()
 		AddSingletonToC[service6](anotherC, &serviceInstance6{name: "instance6"})
@@ -189,6 +187,30 @@ func TestSetParent(t *testing.T) {
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
 			t.Error("service should found in parent")
+		}
+	})
+
+	t.Run("override parent's service success", func(t *testing.T) {
+		globalContainer = New()
+
+		anotherC := New()
+		AddSingletonToC[service6](anotherC, &serviceInstance6{name: "instance6"})
+		AddTransientToC[*serviceInstance6](anotherC, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
+		SetParent(anotherC)
+		if svc := GetService[service6](); svc == nil || svc.GetName() != "instance6" {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil || svc.GetName() != "instance6" {
+			t.Error("service should found in parent")
+		}
+
+		AddSingleton[service6](&serviceInstance6{name: "override-instance6"})
+		AddTransient[*serviceInstance6](func() *serviceInstance6 { return &serviceInstance6{name: "override-instance6"} })
+		if svc := GetService[service6](); svc == nil || svc.GetName() != "override-instance6" {
+			t.Error("service should override in global")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil || svc.GetName() != "override-instance6" {
+			t.Error("service should override in global")
 		}
 	})
 
