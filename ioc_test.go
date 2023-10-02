@@ -22,7 +22,6 @@
 package ioc
 
 import (
-	"reflect"
 	"testing"
 )
 
@@ -175,8 +174,8 @@ func TestSetParent(t *testing.T) {
 		AddTransient[*serviceInstance5](func() *serviceInstance5 { return &serviceInstance5{name: "instance5"} })
 
 		anotherC := New()
-		anotherC.Register(reflect.TypeOf((*service6)(nil)).Elem(), &serviceInstance6{name: "instance6"}, nil)
-		anotherC.Register(reflect.TypeOf((*serviceInstance6)(nil)), nil, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
+		AddSingletonToC[service6](anotherC, &serviceInstance6{name: "instance6"})
+		AddTransientToC[*serviceInstance6](anotherC, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
 
 		if svc := GetService[service6](); svc != nil {
 			t.Error("service should not found in current")
@@ -189,6 +188,80 @@ func TestSetParent(t *testing.T) {
 			t.Error("service should found in parent")
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+	})
+
+	t.Run("parent is null or equals with last one should ignore", func(t *testing.T) {
+		globalContainer = New()
+
+		anotherC := New()
+		AddSingletonToC[service6](anotherC, &serviceInstance6{name: "instance6"})
+		AddTransientToC[*serviceInstance6](anotherC, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
+
+		if svc := GetService[service6](); svc != nil {
+			t.Error("service should not found in current")
+		}
+		if svc := GetService[*serviceInstance6](); svc != nil {
+			t.Error("service should not found in current")
+		}
+		SetParent(anotherC)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		SetParent(nil)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		SetParent(anotherC)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+	})
+
+	t.Run("set parent twice, last parent should been new parent's parent ", func(t *testing.T) {
+		globalContainer = New()
+
+		anotherC := New()
+		AddSingletonToC[service6](anotherC, &serviceInstance6{name: "instance6"})
+		AddTransientToC[*serviceInstance6](anotherC, func() *serviceInstance6 { return &serviceInstance6{name: "instance6"} })
+
+		anotherC2 := New()
+		AddSingletonToC[service5](anotherC2, &serviceInstance5{name: "instance5"})
+		AddTransientToC[*serviceInstance5](anotherC2, func() *serviceInstance5 { return &serviceInstance5{name: "instance5"} })
+		if svc := GetService[service6](); svc != nil {
+			t.Error("service should not found in current")
+		}
+		if svc := GetService[*serviceInstance6](); svc != nil {
+			t.Error("service should not found in current")
+		}
+		SetParent(anotherC)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		SetParent(anotherC2)
+		if svc := GetService[service6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance6](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[service5](); svc == nil {
+			t.Error("service should found in parent")
+		}
+		if svc := GetService[*serviceInstance5](); svc == nil {
 			t.Error("service should found in parent")
 		}
 	})

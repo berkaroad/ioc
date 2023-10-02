@@ -104,6 +104,12 @@ refactor ioc: for simple and performance.
 
 * 2) add convenient functions for interface `Container`
 
+* 3) `ioc.SetParent()` will append parent to exists parent
+
+  both last parent and new parent can also resolve services.
+
+* 4) move `SetParent(parent Resolver)` from interface `Container` to `Resolver`
+
 ### v1.0 (2023-10-01)
 
 refactor ioc: for simple and performance.

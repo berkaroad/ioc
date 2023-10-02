@@ -45,9 +45,6 @@ func New() Container {
 type Container interface {
 	Resolver
 
-	// Set parent resolver, for resolving from parent if service not found in current.
-	SetParent(parent Resolver)
-
 	// Register to add singleton instance or transient instance factory.
 	//
 	//  // service
@@ -79,6 +76,9 @@ type Container interface {
 
 // Resolver can resolve service.
 type Resolver interface {
+	// Set parent resolver, for resolving from parent if service not found in current.
+	SetParent(parent Resolver)
+
 	// Resolve to get service.
 	//
 	//  // service
@@ -289,6 +289,7 @@ var _ Container = (*defaultContainer)(nil)
 type defaultContainer struct {
 	bindings sync.Map
 	parent   Resolver
+	locker   sync.Mutex
 }
 
 func (c *defaultContainer) Resolve(serviceType reflect.Type) reflect.Value {
@@ -309,7 +310,17 @@ func (c *defaultContainer) Resolve(serviceType reflect.Type) reflect.Value {
 }
 
 func (c *defaultContainer) SetParent(parent Resolver) {
-	c.parent = parent
+	defer c.locker.Unlock()
+	c.locker.Lock()
+	if parent == nil || c.parent == parent {
+		return
+	}
+
+	if c.parent == nil {
+		c.parent = parent
+	} else {
+		c.parent.SetParent(parent)
+	}
 }
 
 func (c *defaultContainer) Register(serviceType reflect.Type, singletonInstance any, transinetInstanceFactory any) error {
