@@ -197,6 +197,23 @@ func TestGetService(t *testing.T) {
 		}
 	})
 
+	t.Run("replace exists service should success", func(t *testing.T) {
+		globalContainer = New()
+		anotherC := New()
+		SetParent(anotherC)
+
+		AddSingletonToC[*serviceInstance7](anotherC, &serviceInstance7{name: "instance7"})
+		AddSingletonToC[*serviceInstance8](anotherC, &serviceInstance8{})
+
+		// replace exists service
+		AddSingleton[*serviceInstance7](&serviceInstance7{name: "new-instance7"})
+
+		svc8 := GetService[*serviceInstance8]()
+		if svc8.GetS7Name() != "new-instance7" {
+			t.Error("should replace exists service success")
+		}
+	})
+
 	t.Run("func 'Initialize()' missing service should fail", func(t *testing.T) {
 		globalContainer = New()
 		AddSingleton[*serviceInstance8](&serviceInstance8{})
