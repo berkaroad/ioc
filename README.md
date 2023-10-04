@@ -16,6 +16,10 @@ Inversion of Control (IoC)
 
   Register to parent's container, and then register to current's to override parent's.
 
+* 5) Support inject to singleton instance automatically
+
+  Inject to singleton instance and it's method `Initialized(XXX)` automatically.
+
 ## Usage
 
 ```go
@@ -120,25 +124,37 @@ goos: linux
 goarch: amd64
 pkg: github.com/berkaroad/ioc
 cpu: AMD Ryzen 7 5800H with Radeon Graphics         
-BenchmarkInjectToFunc-4          1000000               556.2 ns/op           128 B/op          5 allocs/op
-BenchmarkInjectToStruct-4        1000000               372.7 ns/op            48 B/op          3 allocs/op
+BenchmarkInjectToFunc-4          1000000               639.8 ns/op           128 B/op          5 allocs/op
+BenchmarkInjectToStruct-4        1000000               463.4 ns/op            48 B/op          3 allocs/op
 PASS
-ok      github.com/berkaroad/ioc        0.933s
+ok      github.com/berkaroad/ioc        1.107s
 ```
 
 ## Release Notes
 
-### v1.1 (2023-10-03)
+### v1.1 (2023-10-04)
 
-* 1) add `New() Container`
+* 1) add function `New() Container`
 
-* 2) add convenient functions for interface `Container`
+* 2) `Inject()` and `InjectFromC()` can accept `reflect.Value`
 
-* 3) `ioc.SetParent()` will append parent to exists parent
+* 3) `Resolve()` will auto inject to singleton instance and it's method `Initialized(XXX)`
+
+* 4) `ioc.SetParent()` will append parent to exists parent
+
+  can replace exists service, by register to parent's container and register to current's to override parent's.
+
+* 5) add convenient functions for interface `Container`
+
+  new functions `AddSingletonToC(XXX)`, `AddTransientToC(XXX)`, `GetServiceFromC(XXX)`, `InjectFromC(XXX)`.
 
   both last parent and new parent can also resolve services.
 
-* 4) move `SetParent(parent Resolver)` from interface `Container` to `Resolver`
+* 6) move `SetParent(parent Resolver)` from interface `Container` to `Resolver`
+
+* 7) split method `Register(XXX)` to `RegisterSingleton(XXX)` and `RegisterTransient(XXX)`
+
+* 8) 39% faster than v0.1.1
 
 ### v1.0 (2023-10-01)
 
@@ -150,9 +166,9 @@ refactor ioc: for simple and performance.
 
   Should add struct tag 'ioc-inject:"true"' to field if want to be injected, but field type `ioc.Resolver` is not necessary.
 
-* 3) 50% faster than last version, when injecting to function
+* 3) 50% faster than v0.1.1, when injecting to function
 
-  Compare with `Container.Invoke()` in last version.
+  Compare with `Container.Invoke()` in v0.1.1
 
 * 4) remove interface `Initializer`
 

@@ -22,6 +22,8 @@
 package ioc
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 )
 
@@ -62,9 +64,53 @@ func TestAddSingleton(t *testing.T) {
 			defer func() {
 				if r := recover(); r == nil {
 					t.Error("type of service 'serviceInstance1' should be interface or *struct")
+				} else {
+					fmt.Printf("panic: %v\n", r)
 				}
 			}()
 			AddSingleton[serviceInstance1](serviceInstance1{})
+		}()
+	})
+
+	t.Run("null service instance should fail", func(t *testing.T) {
+		globalContainer = New()
+		func() {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error("instance couldn't be null")
+				} else {
+					fmt.Printf("panic: %v\n", r)
+				}
+			}()
+			AddSingleton[*serviceInstance1](nil)
+		}()
+	})
+
+	t.Run("use *struct as service and cycle reference in 'Initialize()' should fail", func(t *testing.T) {
+		globalContainer = New()
+		func() {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error("cycle reference in 'Initialize()' in service 'serviceInstance9'")
+				} else {
+					fmt.Printf("panic: %v\n", r)
+				}
+			}()
+			AddSingleton[*serviceInstance9](&serviceInstance9{})
+		}()
+	})
+
+	t.Run("use interface as service and cycle reference in 'Initialize()' should fail", func(t *testing.T) {
+		globalContainer = New()
+		func() {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error("cycle reference in 'Initialize()' in service 'serviceInstance9'")
+				} else {
+					fmt.Printf("panic: %v\n", r)
+				}
+			}()
+			AddSingleton[service1](&serviceInstance10{})
 		}()
 	})
 }
@@ -116,9 +162,56 @@ func TestAddTransient(t *testing.T) {
 			defer func() {
 				if r := recover(); r == nil {
 					t.Error("type of service 'serviceInstance1' should be interface or *struct")
+				} else {
+					fmt.Printf("panic: %v\n", r)
 				}
 			}()
 			AddTransient[serviceInstance1](func() serviceInstance1 { return serviceInstance1{} })
+		}()
+	})
+
+	t.Run("null service instance factory should fail", func(t *testing.T) {
+		globalContainer = New()
+		func() {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error("instance factory couldn't be null")
+				} else {
+					fmt.Printf("panic: %v\n", r)
+				}
+			}()
+			AddTransient[*serviceInstance1](nil)
+		}()
+	})
+}
+
+func TestGetService(t *testing.T) {
+	t.Run("get service with func 'Initialize()' should success", func(t *testing.T) {
+		globalContainer = New()
+		AddSingleton[*serviceInstance7](&serviceInstance7{name: "instance7"})
+		AddSingleton[*serviceInstance8](&serviceInstance8{})
+
+		svc8 := GetService[*serviceInstance8]()
+		if svc8.GetS7Name() != "instance7" {
+			t.Error("should function 'initialize()' invoked success")
+		}
+	})
+
+	t.Run("func 'Initialize()' missing service should fail", func(t *testing.T) {
+		globalContainer = New()
+		AddSingleton[*serviceInstance8](&serviceInstance8{})
+		func() {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Error("missing service should fail")
+				} else {
+					fmt.Printf("panic: %v\n", r)
+				}
+			}()
+			svc8 := GetService[*serviceInstance8]()
+			if svc8.GetS7Name() != "instance7" {
+				t.Error("should function 'initialize()' invoked success")
+			}
 		}()
 	})
 }
@@ -164,6 +257,27 @@ func TestInject(t *testing.T) {
 		if c.F4 != nil || c.F6 == nil || c.F6 != GetService[*serviceInstance4]() {
 			t.Error("singleton instance should different after inject, and only inject to field with tag 'ioc-inject:\"true\"'")
 		}
+	})
+
+	t.Run("inject to impletementation of ioc.Resolve should ignore", func(t *testing.T) {
+		globalContainer = New()
+		c := &defaultContainer{}
+		InjectFromC(c, c)
+		if c.parent != nil {
+			t.Error("inject to impletementation of ioc.Resolve should ignore")
+		}
+	})
+
+	t.Run("inject to invalid reflect.Value should ignore", func(t *testing.T) {
+		globalContainer = New()
+		c := &defaultContainer{}
+		InjectFromC(c, reflect.Value{})
+	})
+
+	t.Run("inject to null should ignore", func(t *testing.T) {
+		globalContainer = New()
+		c := &defaultContainer{}
+		InjectFromC(c, (*serviceInstance1)(nil))
 	})
 }
 
@@ -289,6 +403,72 @@ func TestSetParent(t *testing.T) {
 	})
 }
 
+func TestRegisterSingleton(t *testing.T) {
+	t.Run("null service type should fail", func(t *testing.T) {
+		globalContainer = New()
+
+		c := New()
+		err := c.RegisterSingleton(nil, nil)
+		if err == nil {
+			t.Error("service type should be null")
+		}
+	})
+
+	t.Run("null service instance should fail", func(t *testing.T) {
+		globalContainer = New()
+
+		c := New()
+		err := c.RegisterSingleton(reflect.TypeOf((*serviceInstance1)(nil)), nil)
+		if err == nil {
+			t.Error("null service instance should fail")
+		}
+	})
+
+	t.Run("service instance should impletement service", func(t *testing.T) {
+		globalContainer = New()
+
+		c := New()
+		err := c.RegisterSingleton(reflect.TypeOf((*service2)(nil)).Elem(), &serviceInstance1{})
+		if err == nil {
+			t.Error("service instance should impletement service")
+		}
+	})
+}
+
+func TestRegisterTransient(t *testing.T) {
+	t.Run("", func(t *testing.T) {
+		globalContainer = New()
+
+		c := New()
+		err := c.RegisterTransient(nil, nil)
+		if err == nil {
+			t.Error("null service type should fail")
+		}
+	})
+
+	t.Run("null service instance factory should fail", func(t *testing.T) {
+		globalContainer = New()
+
+		c := New()
+		err := c.RegisterTransient(reflect.TypeOf((*serviceInstance1)(nil)), nil)
+		if err == nil {
+			t.Error("null service instance factory should fail")
+		}
+	})
+
+	t.Run("return value of service instance factory should impletement service", func(t *testing.T) {
+		globalContainer = New()
+
+		c := New()
+		err := c.RegisterTransient(reflect.TypeOf((*service2)(nil)).Elem(), func() *serviceInstance1 {
+			return &serviceInstance1{}
+		})
+		if err == nil {
+			t.Error("service instance should impletement service")
+		}
+	})
+}
+
 type service1 interface {
 	GetName() string
 }
@@ -388,4 +568,50 @@ func (c *client) Func1(p1 service3, p2 *serviceInstance3, p3 service4, p4 *servi
 	c.F2 = p2
 	c.F3 = p3
 	c.F4 = p4
+}
+
+type serviceInstance7 struct {
+	name string
+}
+
+func (instance *serviceInstance7) GetName() string {
+	return instance.name
+}
+
+type serviceInstance8 struct {
+	s7 *serviceInstance7
+}
+
+func (instance *serviceInstance8) GetS7Name() string {
+	return instance.s7.name
+}
+
+func (instance *serviceInstance8) Initialize(s7 *serviceInstance7) {
+	instance.s7 = s7
+}
+
+type serviceInstance9 struct {
+	name string
+	s9   *serviceInstance9
+}
+
+func (instance *serviceInstance9) GetName() string {
+	return instance.name
+}
+
+func (instance *serviceInstance9) Initialize(s9 *serviceInstance9) {
+	instance.s9 = s9
+}
+
+type serviceInstance10 struct {
+	name string
+	s10  service1
+}
+
+func (instance *serviceInstance10) GetName() string {
+	return instance.name
+}
+
+func (instance *serviceInstance10) Initialize(s10 service1) {
+	instance.s10 = s10
 }
