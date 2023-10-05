@@ -344,10 +344,10 @@ func (c *defaultContainer) Resolve(serviceType reflect.Type) reflect.Value {
 				if binding.InstanceInitializer.IsValid() {
 					func() {
 						defer recover()
-						InjectFromC(c, binding.InstanceInitializer)
+						Inject(binding.InstanceInitializer)
 					}()
 				}
-				InjectFromC(c, binding.Instance)
+				Inject(binding.Instance)
 				binding.InstanceInitialized = true
 			}
 			return binding.Instance

@@ -132,15 +132,19 @@ ok      github.com/berkaroad/ioc        1.107s
 
 ## Release Notes
 
+### v1.1.1 (2023-10-05)
+
+* 1) fix bug: replace exists service sometimes doesn't work
+
 ### v1.1 (2023-10-04)
 
 * 1) add function `New() Container`
 
-* 2) `Inject()` and `InjectFromC()` can accept `reflect.Value`
+* 2) `Inject(target any)` can accept `reflect.Value`
 
-* 3) `Resolve()` will auto inject to singleton instance and it's method `Initialized(XXX)`
+* 3) `Resolve(serviceType reflect.Type) reflect.Value` will auto inject to singleton instance and it's method `Initialized(XXX)`
 
-* 4) `ioc.SetParent()` will append parent to exists parent
+* 4) `SetParent(parent Resolver)` will append parent to exists parent
 
   can replace exists service, by register to parent's container and register to current's to override parent's.
 
@@ -168,7 +172,7 @@ refactor ioc: for simple and performance.
 
 * 3) 50% faster than v0.1.1, when injecting to function
 
-  Compare with `Container.Invoke()` in v0.1.1
+  Compare with `Container.Invoke(f interface{}) ([]reflect.Value, error)` in v0.1.1
 
 * 4) remove interface `Initializer`
 
@@ -176,7 +180,7 @@ refactor ioc: for simple and performance.
 
 * 5) rename interface `ReadonlyContainer` to `Resolver`
 
-  Just for `SetParent()` to resolve by parent.
+  Just for `SetParent(parent Resolver)` to resolve by parent.
 
 * 6) simplify interface `Container`
 
