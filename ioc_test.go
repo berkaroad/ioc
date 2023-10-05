@@ -32,6 +32,7 @@ func TestAddSingleton(t *testing.T) {
 		globalContainer = New()
 		svc1 := &serviceInstance1{name: "instance1"}
 		AddSingleton[service1](svc1)
+		AddSingleton[service1](svc1) // ignore exists
 		svc1FromIoc := GetService[service1]()
 		if svc1FromIoc == nil {
 			t.Error("get service null")
@@ -47,6 +48,7 @@ func TestAddSingleton(t *testing.T) {
 		globalContainer = New()
 		svc1 := &serviceInstance1{name: "instance1"}
 		AddSingleton[*serviceInstance1](svc1)
+		AddSingleton[*serviceInstance1](svc1) // ignore exists
 		svc1FromIoc := GetService[*serviceInstance1]()
 		if svc1FromIoc == nil {
 			t.Error("get service null")
@@ -119,6 +121,7 @@ func TestAddTransient(t *testing.T) {
 	t.Run("use interface as service and get service success", func(t *testing.T) {
 		globalContainer = New()
 		AddTransient[service2](func() service2 { return &serviceInstance2{name: "instance2"} })
+		AddTransient[service2](func() service2 { return &serviceInstance2{name: "instance2"} }) // ignore exists
 		svc2FromIoc := GetService[service2]()
 		if svc2FromIoc == nil {
 			t.Error("get service null")
@@ -139,6 +142,7 @@ func TestAddTransient(t *testing.T) {
 	t.Run("use *struct as service and get service success", func(t *testing.T) {
 		globalContainer = New()
 		AddTransient[*serviceInstance2](func() *serviceInstance2 { return &serviceInstance2{name: "instance2"} })
+		AddTransient[*serviceInstance2](func() *serviceInstance2 { return &serviceInstance2{name: "instance2"} }) // ignore exists
 		svc2FromIoc := GetService[*serviceInstance2]()
 		if svc2FromIoc == nil {
 			t.Error("get service null")

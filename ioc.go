@@ -384,7 +384,12 @@ func (c *defaultContainer) RegisterSingleton(serviceType reflect.Type, instance 
 	if instance == nil || reflect.ValueOf(instance).IsZero() {
 		return errors.New("param 'instance' is null")
 	}
-	binding := &serviceBinding{ServiceType: serviceType, Instance: reflect.ValueOf(instance)}
+	binding := c.getBinding(serviceType)
+	if binding != nil {
+		// ignore exists service in current container
+		return nil
+	}
+	binding = &serviceBinding{ServiceType: serviceType, Instance: reflect.ValueOf(instance)}
 	if serviceType != resolverType {
 		if foundMethod := binding.Instance.MethodByName(InitializerMethodName); foundMethod.IsValid() {
 			methodType := foundMethod.Type()
@@ -406,7 +411,12 @@ func (c *defaultContainer) RegisterTransient(serviceType reflect.Type, instanceF
 	if instanceFactory == nil || reflect.ValueOf(instanceFactory).IsZero() {
 		return errors.New("param 'instanceFactory' is null")
 	}
-	binding := &serviceBinding{ServiceType: serviceType, InstanceFactory: reflect.ValueOf(instanceFactory)}
+	binding := c.getBinding(serviceType)
+	if binding != nil {
+		// ignore exists service in current container
+		return nil
+	}
+	binding = &serviceBinding{ServiceType: serviceType, InstanceFactory: reflect.ValueOf(instanceFactory)}
 	return c.addBinding(binding)
 }
 
