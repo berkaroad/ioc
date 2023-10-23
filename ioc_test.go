@@ -201,6 +201,16 @@ func TestGetService(t *testing.T) {
 		}
 	})
 
+	t.Run("get service with custom initialize function should success", func(t *testing.T) {
+		globalContainer = New()
+		AddSingleton[*serviceInstance11](&serviceInstance11{name: "instance11"})
+		AddSingleton[*serviceInstance12](&serviceInstance12{name: "instance12"})
+		svc11 := GetService[*serviceInstance11]()
+		if svc11.s12 == nil || svc11.s12.name != "instance12" {
+			t.Error("should custom initialize function invoked success")
+		}
+	})
+
 	t.Run("replace exists service should success", func(t *testing.T) {
 		globalContainer = New()
 		anotherC := New()
@@ -259,6 +269,26 @@ func TestInject(t *testing.T) {
 		}
 		if c.F4 == nil || c.F4 != GetService[*serviceInstance4]() {
 			t.Error("singleton instance should same after inject")
+		}
+	})
+
+	t.Run("inject to func, that depends on part of unregisterd service, should also invoke success", func(t *testing.T) {
+		globalContainer = New()
+		svc1 := &serviceInstance1{name: "instance1"}
+		AddSingleton[service1](svc1)
+
+		invoked := false
+		Inject(func(s1 service1, s2 service2, s3 *serviceInstance3, f1 int, f2 struct{ Name string }, f3 *struct{ Title string }) {
+			invoked = true
+			if s1 == nil || s1 != svc1 {
+				t.Error("singleton instance should same after inject")
+			}
+			if s2 != nil || s3 != nil {
+				t.Error("unregister instance should be nil")
+			}
+		})
+		if !invoked {
+			t.Error("function after inject should be invoked")
 		}
 	})
 
@@ -635,4 +665,29 @@ func (instance *serviceInstance10) GetName() string {
 
 func (instance *serviceInstance10) Initialize(s10 service1) {
 	instance.s10 = s10
+}
+
+type serviceInstance11 struct {
+	name string
+	s12  *serviceInstance12
+}
+
+func (instance *serviceInstance11) GetName() string {
+	return instance.name
+}
+
+func (instance *serviceInstance11) InitializeMethodName() string {
+	return "CustomInitialize"
+}
+
+func (instance *serviceInstance11) CustomInitialize(s12 *serviceInstance12) {
+	instance.s12 = s12
+}
+
+type serviceInstance12 struct {
+	name string
+}
+
+func (instance *serviceInstance12) GetName() string {
+	return instance.name
 }

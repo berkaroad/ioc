@@ -31,7 +31,14 @@ import (
 	"sync"
 )
 
-const InitializerMethodName string = "Initialize"
+const DefaultInitializeMethodName string = "Initialize"
+
+// CustomInitializer that use customize initialize method instead of default method 'Initialize'
+type CustomInitializer interface {
+	// InitializeMethodName indicate the initialize method name.
+	// Won't be invoked if the method returns is not exists.
+	InitializeMethodName() string
+}
 
 var globalContainer Container = New()
 var resolverType reflect.Type = reflect.TypeOf((*Resolver)(nil)).Elem()
@@ -284,7 +291,7 @@ func InjectFromC(container Container, target any) {
 			argType := targetType.In(i)
 			val := container.Resolve(argType)
 			if !val.IsValid() {
-				panic(fmt.Errorf("service '%v' not found in ioc container, when injecting to func", argType))
+				in[i] = reflect.Zero(argType)
 			} else {
 				in[i] = val
 			}
@@ -391,11 +398,15 @@ func (c *defaultContainer) RegisterSingleton(serviceType reflect.Type, instance 
 	}
 	binding = &serviceBinding{ServiceType: serviceType, Instance: reflect.ValueOf(instance)}
 	if serviceType != resolverType {
-		if foundMethod := binding.Instance.MethodByName(InitializerMethodName); foundMethod.IsValid() {
+		initializeMethodName := DefaultInitializeMethodName
+		if initializer, ok := binding.Instance.Interface().(CustomInitializer); ok {
+			initializeMethodName = initializer.InitializeMethodName()
+		}
+		if foundMethod := binding.Instance.MethodByName(initializeMethodName); foundMethod.IsValid() {
 			methodType := foundMethod.Type()
 			for i := 0; i < methodType.NumIn(); i++ {
 				if methodType.In(i) == serviceType {
-					return fmt.Errorf("cycle reference: param[%d]'s type in method '%s' equals to service '%v'", i, InitializerMethodName, serviceType)
+					return fmt.Errorf("cycle reference: param[%d]'s type in method '%s' equals to service '%v'", i, initializeMethodName, serviceType)
 				}
 			}
 			binding.InstanceInitializer = foundMethod
