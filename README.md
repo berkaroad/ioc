@@ -18,7 +18,7 @@ Inversion of Control (IoC)
 
 * 5) Support inject to singleton instance automatically
 
-  Inject to singleton instance and it's method `Initialized(XXX)` automatically.
+  Inject to singleton instance and it's initialize method `Initialize(XXX)` or another one which the returns of method `InitializeMethodName() string` automatically.
 
 ## Usage
 
@@ -48,9 +48,15 @@ func (c *Class1) GetC2Name() string {
 
 type Class2 struct {
     Name     string
+    resolver ioc.Resolver
 }
 
 func (c *Class2) GetName() string {
+    return c.Name
+}
+
+func (c *Class2) Initialize(resolver ioc.Resolver) string {
+    c.resolver = resolver
     return c.Name
 }
 
@@ -60,10 +66,22 @@ type Interface3 interface {
 
 type Class3 struct {
     Name     string
+    resolver ioc.Resolver
 }
 
 func (c *Class3) GetName() string {
     return "Class3-" + c.Name
+}
+
+// specific custom initialize method name
+func (c *Class3) InitializeMethodName() string {
+    return "MyInitialize"
+}
+
+// custom initialize method
+func (c *Class2) MyInitialize(resolver ioc.Resolver) string {
+    c.resolver = resolver
+    return c.Name
 }
 
 type Class4 struct {
