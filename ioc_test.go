@@ -262,6 +262,26 @@ func TestInject(t *testing.T) {
 		}
 	})
 
+	t.Run("inject to func, that depends on part of unregisterd service, should also invoke success", func(t *testing.T) {
+		globalContainer = New()
+		svc1 := &serviceInstance1{name: "instance1"}
+		AddSingleton[service1](svc1)
+
+		invoked := false
+		Inject(func(s1 service1, s2 service2, s3 *serviceInstance3, f1 int, f2 struct{ Name string }, f3 *struct{ Title string }) {
+			invoked = true
+			if s1 == nil || s1 != svc1 {
+				t.Error("singleton instance should same after inject")
+			}
+			if s2 != nil || s3 != nil {
+				t.Error("unregister instance should be nil")
+			}
+		})
+		if !invoked {
+			t.Error("function after inject should be invoked")
+		}
+	})
+
 	t.Run("inject to struct should success", func(t *testing.T) {
 		globalContainer = New()
 		AddSingleton[service3](&serviceInstance3{name: "instance3"})

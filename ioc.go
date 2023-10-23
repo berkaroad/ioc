@@ -284,7 +284,7 @@ func InjectFromC(container Container, target any) {
 			argType := targetType.In(i)
 			val := container.Resolve(argType)
 			if !val.IsValid() {
-				panic(fmt.Errorf("service '%v' not found in ioc container, when injecting to func", argType))
+				in[i] = reflect.Zero(argType)
 			} else {
 				in[i] = val
 			}
