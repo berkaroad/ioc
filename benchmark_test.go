@@ -26,14 +26,73 @@ import (
 	"testing"
 )
 
-func BenchmarkInjectToFunc(b *testing.B) {
+func BenchmarkGetSingletonService(b *testing.B) {
 	globalContainer = New()
 	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
+	AddSingleton[ProductCategoryRepository2](&ProductCategoryRepositoryImpl{})
+	AddSingleton[*ProductCategoryApplicationServiceImpl](&ProductCategoryApplicationServiceImpl{})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		svc := GetService[*ProductCategoryApplicationServiceImpl]()
+		svc.Get(context.TODO(), "123")
+	}
+}
+
+func BenchmarkGetTransientService(b *testing.B) {
+	globalContainer = New()
+	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
+	AddSingleton[ProductCategoryRepository2](&ProductCategoryRepositoryImpl{})
+	AddTransient[*ProductCategoryApplicationServiceImpl](func() *ProductCategoryApplicationServiceImpl {
+		svc := &ProductCategoryApplicationServiceImpl{}
+		Inject(svc)
+		return svc
+	})
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		svc := GetService[*ProductCategoryApplicationServiceImpl]()
+		svc.Get(context.TODO(), "123")
+	}
+}
+
+func BenchmarkGetTransientServiceNative(b *testing.B) {
+	globalContainer = New()
+	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
+	AddSingleton[ProductCategoryRepository2](&ProductCategoryRepositoryImpl{})
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		svc := &ProductCategoryApplicationServiceImpl{}
+		svc.Resolver = GetService[Resolver]()
+		svc.Repo = GetService[ProductCategoryRepository]()
+		svc.Repo2 = GetService[ProductCategoryRepository2]()
+		svc.Get(context.TODO(), "123")
+	}
+}
+
+func BenchmarkInjectToFunc(b *testing.B) {
+	globalContainer = New()
+	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
+	AddSingleton[ProductCategoryRepository2](&ProductCategoryRepositoryImpl{})
+	svc := &ProductCategoryApplicationServiceImpl{}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
 		Inject(svc.Initialize)
+		svc.Get(context.TODO(), "123")
+	}
+}
+
+func BenchmarkInjectToFuncNative(b *testing.B) {
+	globalContainer = New()
+	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
+	AddSingleton[ProductCategoryRepository2](&ProductCategoryRepositoryImpl{})
+	svc := &ProductCategoryApplicationServiceImpl{}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		svc.Initialize(GetService[Resolver](), GetService[ProductCategoryRepository](), GetService[ProductCategoryRepository2]())
 		svc.Get(context.TODO(), "123")
 	}
 }
@@ -41,11 +100,30 @@ func BenchmarkInjectToFunc(b *testing.B) {
 func BenchmarkInjectToStruct(b *testing.B) {
 	globalContainer = New()
 	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
+	AddSingleton[ProductCategoryRepository2](&ProductCategoryRepositoryImpl{})
+	svc := &ProductCategoryApplicationServiceImpl{}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		svc := &ProductCategoryApplicationServiceImpl{}
 		Inject(svc)
+		svc.Get(context.TODO(), "123")
+		svc.Resolver = nil
+		svc.Repo = nil
+		svc.Repo2 = nil
+	}
+}
+
+func BenchmarkInjectToStructNative(b *testing.B) {
+	globalContainer = New()
+	AddSingleton[ProductCategoryRepository](&ProductCategoryRepositoryImpl{})
+	AddSingleton[ProductCategoryRepository2](&ProductCategoryRepositoryImpl{})
+	svc := &ProductCategoryApplicationServiceImpl{}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		svc.Resolver = GetService[Resolver]()
+		svc.Repo = GetService[ProductCategoryRepository]()
+		svc.Repo2 = GetService[ProductCategoryRepository2]()
 		svc.Get(context.TODO(), "123")
 	}
 }
@@ -58,12 +136,14 @@ var _ ProductCategoryApplicationService = (*ProductCategoryApplicationServiceImp
 
 type ProductCategoryApplicationServiceImpl struct {
 	Resolver Resolver
-	Repo     ProductCategoryRepository `ioc-inject:"true"`
+	Repo     ProductCategoryRepository  `ioc-inject:"true"`
+	Repo2    ProductCategoryRepository2 `ioc-inject:"true"`
 }
 
-func (svc *ProductCategoryApplicationServiceImpl) Initialize(resolver Resolver, repo ProductCategoryRepository) {
+func (svc *ProductCategoryApplicationServiceImpl) Initialize(resolver Resolver, repo ProductCategoryRepository, repo2 ProductCategoryRepository2) {
 	svc.Resolver = resolver
 	svc.Repo = repo
+	svc.Repo2 = repo2
 }
 
 func (svc *ProductCategoryApplicationServiceImpl) Get(ctx context.Context, id string) ProductCategory {
@@ -87,4 +167,8 @@ func (repo *ProductCategoryRepositoryImpl) Get(id string) ProductCategory {
 type ProductCategory struct {
 	ID   string
 	Name string
+}
+
+type ProductCategoryRepository2 interface {
+	Get(id string) ProductCategory
 }
