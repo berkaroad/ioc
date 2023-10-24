@@ -386,13 +386,13 @@ func (c *defaultContainer) Resolve(serviceType reflect.Type) reflect.Value {
 			if !binding.InstanceInitialized {
 				defer binding.Unlock()
 				binding.Lock()
+				Inject(binding.Instance)
 				if binding.InstanceInitializer.IsValid() {
 					func() {
 						defer recover()
 						Inject(binding.InstanceInitializer)
 					}()
 				}
-				Inject(binding.Instance)
 				binding.InstanceInitialized = true
 			}
 			return binding.Instance
