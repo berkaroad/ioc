@@ -142,8 +142,13 @@ goos: linux
 goarch: amd64
 pkg: github.com/berkaroad/ioc
 cpu: AMD Ryzen 7 5800H with Radeon Graphics         
-BenchmarkInjectToFunc-4          1000000               639.8 ns/op           128 B/op          5 allocs/op
-BenchmarkInjectToStruct-4        1000000               463.4 ns/op            48 B/op          3 allocs/op
+BenchmarkGetSingletonService-4           1000000                26.16 ns/op            0 B/op          0 allocs/op
+BenchmarkGetTransientService-4           1000000               370.9 ns/op            48 B/op          1 allocs/op
+BenchmarkGetTransientServiceNative-4     1000000               131.9 ns/op            48 B/op          1 allocs/op
+BenchmarkInjectToFunc-4                  1000000               659.5 ns/op           144 B/op          5 allocs/op
+BenchmarkInjectToFuncNative-4            1000000                89.26 ns/op            0 B/op          0 allocs/op
+BenchmarkInjectToStruct-4                1000000               311.7 ns/op             0 B/op          0 allocs/op
+BenchmarkInjectToStructNative-4          1000000                87.64 ns/op            0 B/op          0 allocs/op
 PASS
-ok      github.com/berkaroad/ioc        1.107s
+ok      github.com/berkaroad/ioc        1.686s
 ```
