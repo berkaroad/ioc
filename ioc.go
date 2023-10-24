@@ -314,11 +314,9 @@ func InjectFromC(container Container, target any) {
 		fields := getFieldsToInject(structType)
 		for _, field := range fields {
 			fieldVal := targetVal.Elem().Field(field.FieldIndex)
-			if fieldVal.IsZero() {
-				val := container.Resolve(field.FieldType)
-				if val.IsValid() {
-					fieldVal.Set(val)
-				}
+			val := container.Resolve(field.FieldType)
+			if val.IsValid() {
+				fieldVal.Set(val)
 			}
 		}
 	}

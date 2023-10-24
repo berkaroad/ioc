@@ -107,9 +107,6 @@ func BenchmarkInjectToStruct(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		Inject(svc)
 		svc.Get(context.TODO(), "123")
-		svc.Resolver = nil
-		svc.Repo = nil
-		svc.Repo2 = nil
 	}
 }
 
