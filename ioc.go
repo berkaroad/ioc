@@ -46,7 +46,7 @@ var resolverType reflect.Type = reflect.TypeOf((*Resolver)(nil)).Elem()
 // New ioc container, and add singleton service 'ioc.Resolver' to it.
 func New() Container {
 	var c Container = &defaultContainer{}
-	c.RegisterSingleton(resolverType, c)
+	c.AddSingleton(resolverType, c)
 	return c
 }
 
@@ -54,7 +54,7 @@ func New() Container {
 type Container interface {
 	Resolver
 
-	// RegisterSingleton to add singleton instance.
+	// AddSingleton to add singleton instance.
 	//
 	//  // service
 	//  type Service1 interface {
@@ -71,12 +71,12 @@ type Container interface {
 	//
 	//  var container ioc.Container
 	//  // interface as service, register as singleton
-	//  err := container.RegisterSingleton(reflect.TypeOf((*Service1)(nil)).Elem(), &ServiceImplementation1{Field1: "abc"})
+	//  err := container.AddSingleton(reflect.TypeOf((*Service1)(nil)).Elem(), &ServiceImplementation1{Field1: "abc"})
 	//  // or *struct as service, register as singleton
-	//  err = container.RegisterSingleton(reflect.TypeOf((*ServiceImplementation1)(nil)), &ServiceImplementation1{Field1: "abc"})
-	RegisterSingleton(serviceType reflect.Type, instance any) error
+	//  err = container.AddSingleton(reflect.TypeOf((*ServiceImplementation1)(nil)), &ServiceImplementation1{Field1: "abc"})
+	AddSingleton(serviceType reflect.Type, instance any) error
 
-	// RegisterTransient to add transient by instance factory.
+	// AddTransient to add transient by instance factory.
 	//
 	//  // service
 	//  type Service1 interface {
@@ -90,14 +90,14 @@ type Container interface {
 	//
 	//  var container ioc.Container
 	//  // interface as service, register as transient
-	//  err = container.RegisterTransient(reflect.TypeOf((*Service1)(nil)).Elem(), func() any {
+	//  err = container.AddTransient(reflect.TypeOf((*Service1)(nil)).Elem(), func() any {
 	//      return &ServiceImplementation1{Field1: "abc"}
 	//  })
 	//  // or *struct as service, register as transient
-	//  err = container.RegisterTransient(reflect.TypeOf((*ServiceImplementation1)(nil)), func() any {
+	//  err = container.AddTransient(reflect.TypeOf((*ServiceImplementation1)(nil)), func() any {
 	//      return &ServiceImplementation1{Field1: "abc"}
 	//  })
-	RegisterTransient(serviceType reflect.Type, instanceFactory any) error
+	AddTransient(serviceType reflect.Type, instanceFactory func() any) error
 }
 
 // Resolver can resolve service.
@@ -156,7 +156,7 @@ func AddSingleton[TService any](instance TService) {
 //
 // It will panic if 'TService' or 'instance' is invalid.
 func AddSingletonToC[TService any](container Container, instance TService) {
-	err := container.RegisterSingleton(reflect.TypeOf((*TService)(nil)).Elem(), instance)
+	err := container.AddSingleton(reflect.TypeOf((*TService)(nil)).Elem(), instance)
 	if err != nil {
 		panic(err)
 	}
@@ -196,8 +196,8 @@ func AddTransientToC[TService any](container Container, instanceFactory func() T
 	if instanceFactory == nil {
 		panic("param 'instanceFactory' is null")
 	}
-	err := container.RegisterTransient(reflect.TypeOf((*TService)(nil)).Elem(), func() reflect.Value {
-		return reflect.ValueOf(instanceFactory())
+	err := container.AddTransient(reflect.TypeOf((*TService)(nil)).Elem(), func() any {
+		return instanceFactory()
 	})
 	if err != nil {
 		panic(err)
@@ -395,7 +395,7 @@ func (c *defaultContainer) Resolve(serviceType reflect.Type) reflect.Value {
 			}
 			return binding.Instance
 		}
-		return binding.InstanceFactory()
+		return reflect.ValueOf(binding.InstanceFactory())
 	} else {
 		parent := c.parent
 		if parent != nil {
@@ -420,7 +420,7 @@ func (c *defaultContainer) SetParent(parent Resolver) {
 	}
 }
 
-func (c *defaultContainer) RegisterSingleton(serviceType reflect.Type, instance any) error {
+func (c *defaultContainer) AddSingleton(serviceType reflect.Type, instance any) error {
 	if serviceType == nil {
 		return errors.New("param 'serviceType' is null")
 	}
@@ -451,23 +451,19 @@ func (c *defaultContainer) RegisterSingleton(serviceType reflect.Type, instance 
 	return c.addBinding(binding)
 }
 
-func (c *defaultContainer) RegisterTransient(serviceType reflect.Type, instanceFactory any) error {
+func (c *defaultContainer) AddTransient(serviceType reflect.Type, instanceFactory func() any) error {
 	if serviceType == nil {
 		return errors.New("param 'serviceType' is null")
 	}
-	if instanceFactory == nil || reflect.ValueOf(instanceFactory).IsZero() {
+	if instanceFactory == nil {
 		return errors.New("param 'instanceFactory' is null")
-	}
-	instanceFactoryFunc, ok := instanceFactory.(func() reflect.Value)
-	if !ok {
-		return errors.New("param 'instanceFactory' should be func() reflect.Value")
 	}
 	binding := c.getBinding(serviceType)
 	if binding != nil {
 		// ignore exists service in current container
 		return nil
 	}
-	binding = &serviceBinding{ServiceType: serviceType, InstanceFactory: instanceFactoryFunc}
+	binding = &serviceBinding{ServiceType: serviceType, InstanceFactory: instanceFactory}
 	return c.addBinding(binding)
 }
 
@@ -500,7 +496,7 @@ type serviceBinding struct {
 	Instance            reflect.Value
 	InstanceInitializer reflect.Value
 	InstanceInitialized bool
-	InstanceFactory     func() reflect.Value
+	InstanceFactory     func() any
 
 	initializerLocker sync.Mutex
 }

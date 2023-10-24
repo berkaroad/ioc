@@ -198,6 +198,7 @@ func TestGetService(t *testing.T) {
 		svc8 := GetService[*serviceInstance8]()
 		if svc8.GetS7Name() != "instance7" {
 			t.Error("should function 'initialize()' invoked success")
+			return
 		}
 	})
 
@@ -208,6 +209,7 @@ func TestGetService(t *testing.T) {
 		svc11 := GetService[*serviceInstance11]()
 		if svc11.s12 == nil || svc11.s12.name != "instance12" {
 			t.Error("should custom initialize function invoked success")
+			return
 		}
 	})
 
@@ -225,6 +227,7 @@ func TestGetService(t *testing.T) {
 		svc8 := GetService[*serviceInstance8]()
 		if svc8.GetS7Name() != "new-instance7" {
 			t.Error("should replace exists service success")
+			return
 		}
 	})
 
@@ -242,6 +245,7 @@ func TestGetService(t *testing.T) {
 			svc8 := GetService[*serviceInstance8]()
 			if svc8.GetS7Name() != "instance7" {
 				t.Error("should function 'initialize()' invoked success")
+				return
 			}
 		}()
 	})
@@ -260,15 +264,19 @@ func TestInject(t *testing.T) {
 		Inject((&c).Func1)
 		if c.F1 == nil || c.F1 != GetService[service3]() {
 			t.Error("singleton instance should same after inject")
+			return
 		}
 		if c.F2 == nil || c.F2 == GetService[*serviceInstance3]() {
 			t.Error("transient instance should different after inject")
+			return
 		}
 		if c.F3 == nil || c.F3 == GetService[service4]() {
 			t.Error("transient instance should different after inject")
+			return
 		}
 		if c.F4 == nil || c.F4 != GetService[*serviceInstance4]() {
 			t.Error("singleton instance should same after inject")
+			return
 		}
 	})
 
@@ -282,13 +290,16 @@ func TestInject(t *testing.T) {
 			invoked = true
 			if s1 == nil || s1 != svc1 {
 				t.Error("singleton instance should same after inject")
+				return
 			}
 			if s2 != nil || s3 != nil {
 				t.Error("unregister instance should be nil")
+				return
 			}
 		})
 		if !invoked {
 			t.Error("function after inject should be invoked")
+			return
 		}
 	})
 
@@ -304,9 +315,11 @@ func TestInject(t *testing.T) {
 
 		if c.F3 != nil || c.F5 == nil || c.F5 == GetService[service4]() {
 			t.Error("transient instance should same after inject, and only inject to field with tag 'ioc-inject:\"true\"'")
+			return
 		}
 		if c.F4 != nil || c.F6 == nil || c.F6 != GetService[*serviceInstance4]() {
 			t.Error("singleton instance should different after inject, and only inject to field with tag 'ioc-inject:\"true\"'")
+			return
 		}
 	})
 
@@ -316,6 +329,7 @@ func TestInject(t *testing.T) {
 		InjectFromC(c, c)
 		if c.parent != nil {
 			t.Error("inject to impletementation of ioc.Resolve should ignore")
+			return
 		}
 	})
 
@@ -342,16 +356,20 @@ func TestSetParent(t *testing.T) {
 
 		if svc := GetService[service6](); svc != nil {
 			t.Error("service should not found in current")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc != nil {
 			t.Error("service should not found in current")
+			return
 		}
 		SetParent(anotherC)
 		if svc := GetService[service6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 	})
 
@@ -364,18 +382,22 @@ func TestSetParent(t *testing.T) {
 		SetParent(anotherC)
 		if svc := GetService[service6](); svc == nil || svc.GetName() != "instance6" {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil || svc.GetName() != "instance6" {
 			t.Error("service should found in parent")
+			return
 		}
 
 		AddSingleton[service6](&serviceInstance6{name: "override-instance6"})
 		AddTransient[*serviceInstance6](func() *serviceInstance6 { return &serviceInstance6{name: "override-instance6"} })
 		if svc := GetService[service6](); svc == nil || svc.GetName() != "override-instance6" {
 			t.Error("service should override in global")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil || svc.GetName() != "override-instance6" {
 			t.Error("service should override in global")
+			return
 		}
 	})
 
@@ -388,30 +410,38 @@ func TestSetParent(t *testing.T) {
 
 		if svc := GetService[service6](); svc != nil {
 			t.Error("service should not found in current")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc != nil {
 			t.Error("service should not found in current")
+			return
 		}
 		SetParent(anotherC)
 		if svc := GetService[service6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		SetParent(nil)
 		if svc := GetService[service6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		SetParent(anotherC)
 		if svc := GetService[service6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 	})
 
@@ -427,41 +457,50 @@ func TestSetParent(t *testing.T) {
 		AddTransientToC[*serviceInstance5](anotherC2, func() *serviceInstance5 { return &serviceInstance5{name: "instance5"} })
 		if svc := GetService[service6](); svc != nil {
 			t.Error("service should not found in current")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc != nil {
 			t.Error("service should not found in current")
+			return
 		}
 		SetParent(anotherC)
 		if svc := GetService[service6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		SetParent(anotherC2)
 		if svc := GetService[service6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[*serviceInstance6](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[service5](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 		if svc := GetService[*serviceInstance5](); svc == nil {
 			t.Error("service should found in parent")
+			return
 		}
 	})
 }
 
-func TestRegisterSingleton(t *testing.T) {
+func TestContainerAddSingleton(t *testing.T) {
 	t.Run("null service type should fail", func(t *testing.T) {
 		globalContainer = New()
 
 		c := New()
-		err := c.RegisterSingleton(nil, nil)
+		err := c.AddSingleton(nil, nil)
 		if err == nil {
 			t.Error("service type should be null")
+			return
 		}
 	})
 
@@ -469,9 +508,10 @@ func TestRegisterSingleton(t *testing.T) {
 		globalContainer = New()
 
 		c := New()
-		err := c.RegisterSingleton(reflect.TypeOf((*serviceInstance1)(nil)), nil)
+		err := c.AddSingleton(reflect.TypeOf((*serviceInstance1)(nil)), nil)
 		if err == nil {
 			t.Error("null service instance should fail")
+			return
 		}
 	})
 
@@ -479,21 +519,23 @@ func TestRegisterSingleton(t *testing.T) {
 		globalContainer = New()
 
 		c := New()
-		err := c.RegisterSingleton(reflect.TypeOf((*service2)(nil)).Elem(), &serviceInstance1{})
+		err := c.AddSingleton(reflect.TypeOf((*service2)(nil)).Elem(), &serviceInstance1{})
 		if err == nil {
 			t.Error("service instance should impletement service")
+			return
 		}
 	})
 }
 
-func TestRegisterTransient(t *testing.T) {
+func TestContainerAddTransient(t *testing.T) {
 	t.Run("", func(t *testing.T) {
 		globalContainer = New()
 
 		c := New()
-		err := c.RegisterTransient(nil, nil)
+		err := c.AddTransient(nil, nil)
 		if err == nil {
 			t.Error("null service type should fail")
+			return
 		}
 	})
 
@@ -501,21 +543,10 @@ func TestRegisterTransient(t *testing.T) {
 		globalContainer = New()
 
 		c := New()
-		err := c.RegisterTransient(reflect.TypeOf((*serviceInstance1)(nil)), nil)
+		err := c.AddTransient(reflect.TypeOf((*serviceInstance1)(nil)), nil)
 		if err == nil {
 			t.Error("null service instance factory should fail")
-		}
-	})
-
-	t.Run("return value of service instance factory should impletement service", func(t *testing.T) {
-		globalContainer = New()
-
-		c := New()
-		err := c.RegisterTransient(reflect.TypeOf((*service2)(nil)).Elem(), func() *serviceInstance1 {
-			return &serviceInstance1{}
-		})
-		if err == nil {
-			t.Error("service instance should impletement service")
+			return
 		}
 	})
 }
