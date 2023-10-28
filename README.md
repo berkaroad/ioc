@@ -20,6 +20,8 @@ Inversion of Control (IoC)
 
   Inject to singleton instance and it's initialize method `Initialize(XXX)` or another one which the returns of method `InitializeMethodName() string` automatically.
 
+  It will use zero value instead of panic if depended service not registerd.
+
 ## Usage
 
 ```go
